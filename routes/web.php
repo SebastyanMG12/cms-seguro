@@ -5,10 +5,15 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\ContactController;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
 Route::get('/acerca', [PageController::class, 'about'])->name('about');
+Route::get('/contacto', [ContactController::class, 'create'])->name('contact.create');
+Route::post('/contacto', [ContactController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('contact.store');
 
 // Solo visitantes (no autenticados)
 Route::middleware('guest')->group(function () {
@@ -25,7 +30,7 @@ Route::middleware('guest')->group(function () {
 
 // Solo usuarios autenticados
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
+    Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::resource('posts', PostController::class);
 });

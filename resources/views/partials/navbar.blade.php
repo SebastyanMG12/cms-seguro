@@ -18,6 +18,11 @@
                         href="{{ route('about') }}">Acerca</a>
                 </li>
 
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('contact.*') ? 'active' : '' }}"
+                        href="{{ route('contact.create') }}">Contacto</a>
+                </li>
+
                 @auth
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
