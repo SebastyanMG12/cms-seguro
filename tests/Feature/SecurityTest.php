@@ -6,6 +6,8 @@ use App\Models\ReceivedEmail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class SecurityTest extends TestCase
 {
@@ -96,5 +98,32 @@ class SecurityTest extends TestCase
         $this->get('/')
             ->assertHeader('X-Frame-Options', 'DENY')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+    public function test_password_reset_deletes_existing_sessions(): void
+    {
+        $user = $this->user();
+
+        DB::table('sessions')->insert([
+            'id' => 'sesion-robada-123',
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test',
+            'payload' => '',
+            'last_activity' => now()->timestamp,
+        ]);
+
+        $record = \App\Models\PasswordResetCode::create([
+            'user_id' => $user->id,
+            'code_hash' => Hash::make('123456'),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->withSession(['reset_verified_id' => $record->id])
+            ->post('/recuperar/nueva', [
+                'password' => 'NuevaClave#Segura2026',
+                'password_confirmation' => 'NuevaClave#Segura2026',
+            ]);
+
+        $this->assertDatabaseMissing('sessions', ['id' => 'sesion-robada-123']);
     }
 }

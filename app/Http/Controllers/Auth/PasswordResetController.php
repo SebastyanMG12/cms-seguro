@@ -15,6 +15,7 @@ use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Throwable;
 use App\Services\Audit;
+use Illuminate\Support\Facades\DB;
 
 class PasswordResetController extends Controller
 {
@@ -135,6 +136,7 @@ class PasswordResetController extends Controller
 
         $record->user->forceFill(['password' => Hash::make($data['password'])])->save();
         Audit::log('password_changed', $record->user, [], $record->user->id);
+        DB::table('sessions')->where('user_id', $record->user->id)->delete(); 
         $record->update(['used_at' => now()]);
 
         // Cierra todas las sesiones y limpia el flujo.
