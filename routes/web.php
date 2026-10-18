@@ -30,7 +30,7 @@ Route::middleware('guest')->group(function () {
 });
 
 // Solo usuarios autenticados
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::resource('posts', PostController::class);

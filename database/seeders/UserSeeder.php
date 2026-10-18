@@ -10,12 +10,15 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
+        $user = User::updateOrCreate(
             ['email' => 'usuario@secureapp.test'],
             [
                 'name' => 'Usuario de Prueba',
                 'password' => Hash::make('Segura#2026!'),
             ]
         );
+
+        // role y status se asignan explícitamente, no vía $fillable.
+        $user->forceFill(['role' => 'admin', 'status' => 'active'])->save();
     }
 }

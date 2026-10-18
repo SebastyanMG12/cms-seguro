@@ -7,10 +7,14 @@
         class="list-group-item list-group-item-action {{ request()->routeIs('posts.*') ? 'active' : '' }}">
         Publicaciones
     </a>
-    <a href="{{ route('emails.index') }}"
-        class="list-group-item list-group-item-action {{ request()->routeIs('emails.*') ? 'active' : '' }}">
-        Correos recibidos
-    </a>
+
+    @can('view-inbox')
+        <a href="{{ route('emails.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('emails.*') ? 'active' : '' }}">
+            Correos recibidos
+        </a>
+    @endcan
+
     <span class="list-group-item text-muted">Usuarios <small>(próximamente)</small></span>
     <span class="list-group-item text-muted">Páginas <small>(próximamente)</small></span>
     <span class="list-group-item text-muted">Servicios <small>(próximamente)</small></span>
