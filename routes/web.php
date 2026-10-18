@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PostController;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -26,4 +27,5 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+    Route::resource('posts', PostController::class);
 });
