@@ -164,4 +164,9 @@ class SecurityTest extends TestCase
 
         Mail::assertNothingSent();
     }
+    public function test_session_cookie_is_http_only(): void
+    {
+        $this->assertTrue(config('session.http_only'));
+        $this->assertSame('lax', config('session.same_site'));
+    }
 }
