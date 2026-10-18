@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ReceivedEmailController;
+use App\Http\Controllers\Auth\PasswordResetController;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -27,6 +28,18 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegisterController::class, 'store'])
         ->middleware('throttle:5,1')
         ->name('register.store');
+
+    Route::get('/recuperar', [PasswordResetController::class, 'requestForm'])->name('password.request');
+    Route::post('/recuperar', [PasswordResetController::class, 'sendCode'])
+        ->middleware('throttle:5,1')->name('password.email');
+
+    Route::get('/recuperar/codigo', [PasswordResetController::class, 'verifyForm'])->name('password.verify');
+    Route::post('/recuperar/codigo', [PasswordResetController::class, 'verifyCode'])
+        ->middleware('throttle:10,1')->name('password.verify.store');
+
+    Route::get('/recuperar/nueva', [PasswordResetController::class, 'resetForm'])->name('password.reset');
+    Route::post('/recuperar/nueva', [PasswordResetController::class, 'reset'])
+        ->middleware('throttle:5,1')->name('password.update');
 });
 
 // Solo usuarios autenticados
