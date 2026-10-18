@@ -39,3 +39,9 @@ cabeceras HTTP, sesiones en base de datos, auditoría. Ver el informe.
 
 ## Crear el primer administrador
 No hay usuarios por defecto. Créalo con php artisan tinker.
+
+## Correr servidor
+
+
+- Terminal 1 php artisan serve
+- Terminal 2 npm run dev
