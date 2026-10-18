@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Throwable;
+use App\Services\Audit;
 
 class PasswordResetController extends Controller
 {
@@ -49,6 +50,7 @@ class PasswordResetController extends Controller
                     'code_hash' => Hash::make($code),
                     'expires_at' => now()->addMinutes(10),
                 ]);
+                Audit::log('password_reset_requested', $user, [], $user->id);
 
                 try {
                     Mail::to($user->email)->send(new PasswordResetCodeMail($code));
@@ -132,6 +134,7 @@ class PasswordResetController extends Controller
         }
 
         $record->user->forceFill(['password' => Hash::make($data['password'])])->save();
+        Audit::log('password_changed', $record->user, [], $record->user->id);
         $record->update(['used_at' => now()]);
 
         // Cierra todas las sesiones y limpia el flujo.

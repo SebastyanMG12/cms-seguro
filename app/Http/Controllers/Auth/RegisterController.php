@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
+use App\Services\Audit;
 
 class RegisterController extends Controller
 {
@@ -28,6 +29,7 @@ class RegisterController extends Controller
         ]);
 
         Auth::login($user);
+        Audit::log('user_registered', $user);
         $request->session()->regenerate();
 
         return redirect()->route('dashboard');

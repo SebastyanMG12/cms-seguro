@@ -8,6 +8,7 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ReceivedEmailController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\AuditLogController;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -51,4 +52,5 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/correos/{email}', [ReceivedEmailController::class, 'show'])
         ->whereNumber('email')
         ->name('emails.show');
+    Route::get('/auditoria', [AuditLogController::class, 'index'])->name('audit.index');
 });

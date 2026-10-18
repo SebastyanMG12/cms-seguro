@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use App\Services\Audit;
 
 class PostController extends Controller
 {
@@ -33,6 +34,7 @@ class PostController extends Controller
         $data['slug'] = $this->uniqueSlug($data['title']);
 
         $post = $request->user()->posts()->create($data);
+        Audit::log('post_created', $post);
 
         return redirect()->route('posts.show', $post)
             ->with('success', 'Publicación creada correctamente.');
@@ -57,6 +59,7 @@ class PostController extends Controller
         Gate::authorize('update', $post);
 
         $post->update($request->validated());
+        Audit::log('post_updated', $post);
 
         return redirect()->route('posts.show', $post)
             ->with('success', 'Publicación actualizada correctamente.');
@@ -66,6 +69,7 @@ class PostController extends Controller
     {
         Gate::authorize('delete', $post);
 
+        Audit::log('post_deleted', $post);
         $post->delete();
 
         return redirect()->route('posts.index')
