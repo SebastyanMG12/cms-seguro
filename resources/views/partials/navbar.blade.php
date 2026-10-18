@@ -38,10 +38,6 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('login') ? 'active' : '' }}"
                             href="{{ route('login') }}">Ingresar</a>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('register') ? 'active' : '' }}"
-                            href="{{ route('register') }}">Registrarse</a>
-                    </li>
                     </li>
                 @endauth
             </ul>

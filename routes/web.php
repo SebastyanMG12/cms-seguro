@@ -1,14 +1,14 @@
 <?php
 
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\PageController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PostController;
-use App\Http\Controllers\ContactController;
-use App\Http\Controllers\ReceivedEmailController;
-use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\ReceivedEmailController;
+use Illuminate\Support\Facades\Route;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -19,16 +19,12 @@ Route::post('/contacto', [ContactController::class, 'store'])
     ->name('contact.store');
 
 // Solo visitantes (no autenticados)
+// Registro público cerrado: los usuarios los crea un administrador.
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])
         ->middleware('throttle:login')
         ->name('login.store');
-
-    Route::get('/register', [RegisterController::class, 'create'])->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])
-        ->middleware('throttle:5,1')
-        ->name('register.store');
 
     Route::get('/recuperar', [PasswordResetController::class, 'requestForm'])->name('password.request');
     Route::post('/recuperar', [PasswordResetController::class, 'sendCode'])
@@ -43,14 +39,21 @@ Route::middleware('guest')->group(function () {
         ->middleware('throttle:5,1')->name('password.update');
 });
 
-// Solo usuarios autenticados
+// Solo usuarios autenticados y activos
 Route::middleware(['auth', 'active'])->group(function () {
-    Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
+    Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
     Route::resource('posts', PostController::class);
+
     Route::get('/correos', [ReceivedEmailController::class, 'index'])->name('emails.index');
     Route::get('/correos/{email}', [ReceivedEmailController::class, 'show'])
         ->whereNumber('email')
         ->name('emails.show');
+
     Route::get('/auditoria', [AuditLogController::class, 'index'])->name('audit.index');
+
+    Route::get('/admin/usuarios', [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/usuarios/crear', [UserController::class, 'create'])->name('admin.users.create');
+    Route::post('/admin/usuarios', [UserController::class, 'store'])->name('admin.users.store');
 });

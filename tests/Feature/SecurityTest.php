@@ -43,17 +43,28 @@ class SecurityTest extends TestCase
         $this->actingAs($this->user('author'))->get('/auditoria')->assertForbidden();
     }
 
-    public function test_registration_ignores_role_field(): void
+    public function test_public_registration_is_closed(): void
     {
-        $this->post('/register', [
-            'name' => 'Intruso',
-            'email' => 'intruso@secureapp.test',
+        $this->get('/register')->assertNotFound();
+        $this->post('/register', ['name' => 'x', 'email' => 'x@x.test'])->assertStatus(404);
+    }
+
+    public function test_only_admin_can_create_users(): void
+    {
+        $payload = [
+            'name' => 'Nuevo',
+            'email' => 'nuevo@x.test',
+            'role' => 'author',
             'password' => 'Clave#Segura2026',
             'password_confirmation' => 'Clave#Segura2026',
-            'role' => 'admin',
-        ]);
+        ];
 
-        $this->assertSame('author', User::where('email', 'intruso@secureapp.test')->value('role'));
+        $this->actingAs($this->user('author'))->post('/admin/usuarios', $payload)->assertForbidden();
+        $this->assertDatabaseMissing('users', ['email' => 'nuevo@x.test']);
+
+        $this->actingAs($this->user('admin'))->post('/admin/usuarios', $payload)
+            ->assertRedirect(route('admin.users.index'));
+        $this->assertDatabaseHas('users', ['email' => 'nuevo@x.test', 'role' => 'author']);
     }
 
     public function test_user_cannot_view_other_users_post(): void

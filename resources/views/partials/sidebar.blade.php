@@ -22,7 +22,12 @@
         </a>
     @endcan
 
-    <span class="list-group-item text-muted">Usuarios <small>(próximamente)</small></span>
+    @can('manage-users')
+        <a href="{{ route('admin.users.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+            Usuarios
+        </a>
+    @endcan
     <span class="list-group-item text-muted">Páginas <small>(próximamente)</small></span>
     <span class="list-group-item text-muted">Servicios <small>(próximamente)</small></span>
     <span class="list-group-item text-muted">Galería <small>(próximamente)</small></span>
