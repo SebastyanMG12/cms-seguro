@@ -24,11 +24,14 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', function (Request $request) {
             $email = Str::lower((string) $request->input('email'));
 
-            return Limit::perMinute(5)->by($email.'|'.$request->ip());
+            return [
+                Limit::perMinute(5)->by($email . '|' . $request->ip()),
+                Limit::perMinute(20)->by('ip|' . $request->ip()),
+            ];
         });
 
-        Gate::define('view-inbox', fn (User $user) => $user->hasRole('admin', 'editor'));
-        Gate::define('manage-users', fn (User $user) => $user->isAdmin());
-        Gate::define('view-audit', fn (User $user) => $user->isAdmin());
+        Gate::define('view-inbox', fn(User $user) => $user->hasRole('admin', 'editor'));
+        Gate::define('manage-users', fn(User $user) => $user->isAdmin());
+        Gate::define('view-audit', fn(User $user) => $user->isAdmin());
     }
 }

@@ -19,6 +19,10 @@ class ContactController extends Controller
 
     public function store(ContactRequest $request): RedirectResponse
     {
+        if ($request->filled('website')) {
+            // Bot detectado: fingimos éxito sin enviar nada.
+            return back()->with('success', 'Mensaje enviado correctamente.');
+        }
         $data = $request->validated();
 
         try {
@@ -27,7 +31,7 @@ class ContactController extends Controller
             );
         } catch (Throwable $e) {
             // Se registra el error técnico, pero al usuario no se le muestra.
-            Log::error('Fallo al enviar correo de contacto: '.$e->getMessage());
+            Log::error('Fallo al enviar correo de contacto: ' . $e->getMessage());
 
             return back()
                 ->withInput()

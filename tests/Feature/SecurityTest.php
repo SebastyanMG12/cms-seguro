@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\PasswordResetCode;
 use App\Models\ReceivedEmail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Tests\TestCase;
 
 class SecurityTest extends TestCase
 {
@@ -99,6 +101,7 @@ class SecurityTest extends TestCase
             ->assertHeader('X-Frame-Options', 'DENY')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
+
     public function test_password_reset_deletes_existing_sessions(): void
     {
         $user = $this->user();
@@ -112,7 +115,7 @@ class SecurityTest extends TestCase
             'last_activity' => now()->timestamp,
         ]);
 
-        $record = \App\Models\PasswordResetCode::create([
+        $record = PasswordResetCode::create([
             'user_id' => $user->id,
             'code_hash' => Hash::make('123456'),
             'expires_at' => now()->addMinutes(10),
@@ -125,5 +128,29 @@ class SecurityTest extends TestCase
             ]);
 
         $this->assertDatabaseMissing('sessions', ['id' => 'sesion-robada-123']);
+    }
+
+    public function test_login_is_limited_per_ip_across_different_emails(): void
+    {
+        for ($i = 1; $i <= 20; $i++) {
+            $this->post('/login', ['email' => "user{$i}@x.test", 'password' => 'mala']);
+        }
+
+        $this->post('/login', ['email' => 'otro@x.test', 'password' => 'mala'])
+            ->assertStatus(429);
+    }
+
+    public function test_contact_honeypot_discards_bot_messages(): void
+    {
+        Mail::fake();
+
+        $this->post('/contacto', [
+            'name' => 'Bot',
+            'email' => 'bot@x.test',
+            'message' => 'mensaje de spam largo',
+            'website' => 'http://spam.test',
+        ]);
+
+        Mail::assertNothingSent();
     }
 }
