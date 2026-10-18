@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
         ]);
+        $middleware->appendToGroup('web', \App\Http\Middleware\SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
