@@ -6,6 +6,7 @@ use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ReceivedEmailController;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -33,4 +34,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::resource('posts', PostController::class);
+    Route::get('/correos', [ReceivedEmailController::class, 'index'])->name('emails.index');
+    Route::get('/correos/{email}', [ReceivedEmailController::class, 'show'])
+        ->whereNumber('email')
+        ->name('emails.show');
 });

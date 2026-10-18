@@ -7,12 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use App\Services\Mail\FakeMailSource;
+use App\Services\Mail\MailSource;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(MailSource::class, FakeMailSource::class);
     }
 
     public function boot(): void
