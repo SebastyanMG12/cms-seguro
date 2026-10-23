@@ -34,8 +34,8 @@ class ImapMailSource implements MailSource
                 $items[] = [
                     'message_id' => (string) $message->getMessageId(),
                     'from_email' => (string) ($from->mail ?? ''),
-                    'from_name' => (string) ($from->personal ?? ''),
-                    'subject' => (string) $message->getSubject(),
+                    'from_name' => $this->clean($from->personal ?? ''),
+                    'subject' => $this->clean($message->getSubject()),
                     'body' => $body,
                     'received_at' => $message->getDate()->first()?->format('Y-m-d H:i:s'),
                 ];
@@ -48,5 +48,19 @@ class ImapMailSource implements MailSource
         } finally {
             $client->disconnect();
         }
+    }
+
+    private function clean(?string $value): string
+    {
+        $decoded = iconv_mime_decode(
+            (string) $value,
+            ICONV_MIME_DECODE_CONTINUE_ON_ERROR,
+            'UTF-8'
+        );
+
+        return trim(
+            $decoded !== false ? $decoded : (string) $value,
+            " \t\n\r\0\x0B\"'"
+        );
     }
 }

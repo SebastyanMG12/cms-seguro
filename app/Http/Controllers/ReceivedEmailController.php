@@ -3,21 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\ReceivedEmail;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\View\View;
 
 class ReceivedEmailController extends Controller
 {
-    public function index(): View
+    public function index(): Response
     {
         Gate::authorize('viewAny', ReceivedEmail::class);
 
         $emails = ReceivedEmail::orderByDesc('received_at')->paginate(15);
 
-        return view('emails_inbox.index', compact('emails'));
+        return response(view('emails_inbox.index', compact('emails')))
+            ->header('Cache-Control', 'no-store, max-age=0');
     }
 
-    public function show(ReceivedEmail $email)
+    public function show(ReceivedEmail $email): Response
     {
         Gate::authorize('view', $email);
 
@@ -25,6 +26,7 @@ class ReceivedEmailController extends Controller
             $email->update(['is_read' => true]);
         }
 
-        return view('emails_inbox.show', compact('email'));
+        return response(view('emails_inbox.show', compact('email')))
+            ->header('Cache-Control', 'no-store, max-age=0');
     }
 }
