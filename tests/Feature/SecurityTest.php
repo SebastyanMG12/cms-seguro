@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
+use App\Services\Mail\MailSource;
 
 class SecurityTest extends TestCase
 {
@@ -168,5 +169,29 @@ class SecurityTest extends TestCase
     {
         $this->assertTrue(config('session.http_only'));
         $this->assertSame('lax', config('session.same_site'));
+    }
+
+    public function test_receive_command_is_idempotent(): void
+    {
+        $this->app->bind(MailSource::class, fn() => new class implements MailSource {
+            public function fetch(int $limit = 10): array
+                {
+                    return [
+                        [
+                            'message_id' => '<test-1@x.test>',
+                            'from_email' => 'a@x.test',
+                            'from_name' => 'A',
+                            'subject' => 'Hola',
+                            'body' => 'Texto',
+                            'received_at' => '2026-10-23 10:00:00',
+                        ]
+                    ];
+                }
+            });
+
+        $this->artisan('mail:receive')->assertSuccessful();
+        $this->artisan('mail:receive')->assertSuccessful();
+
+        $this->assertDatabaseCount('received_emails', 1);
     }
 }

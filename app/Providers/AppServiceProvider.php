@@ -11,12 +11,17 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use App\Services\Mail\ImapMailSource;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(MailSource::class, FakeMailSource::class);
+        $this->app->bind(MailSource::class, function () {
+            return config('imap.accounts.default.username')
+                ? new ImapMailSource()
+                : new FakeMailSource();
+        });
     }
 
     public function boot(): void
