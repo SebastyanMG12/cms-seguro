@@ -105,6 +105,9 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::post('/admin/usuarios/{user}/restablecer-2fa', [UserController::class, 'resetTwoFactor'])
         ->whereNumber('user')
         ->name('admin.users.reset-2fa');
+    Route::post('/admin/usuarios/{user}/restablecer-contrasena', [UserController::class, 'resetPassword'])
+        ->whereNumber('user')
+        ->name('admin.users.reset-password');
     Route::delete('/admin/usuarios/{user}', [UserController::class, 'destroy'])
         ->whereNumber('user')
         ->name('admin.users.destroy');
@@ -115,7 +118,7 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     // Recursos físicos (camillas y habitaciones)
     Route::post('/habitaciones/{room}/camillas', [PhysicalResourceController::class, 'storeBed'])
         ->whereNumber('room')
-        ->name('rooms.beds.store');
+        ->name('beds.store');
     Route::post('/habitaciones/{room}/estado', [PhysicalResourceController::class, 'updateRoomStatus'])
         ->whereNumber('room')
         ->name('rooms.update-status');

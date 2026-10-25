@@ -109,6 +109,28 @@ class UserController extends Controller
         return back()->with('success', 'Segundo factor (2FA) restablecido para el usuario.');
     }
 
+    public function resetPassword(Request $request, User $user): RedirectResponse
+    {
+        Gate::authorize('usuarios.gestionar');
+
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'reason' => ['required', 'string', 'min:5', 'max:255'],
+        ]);
+
+        $user->forceFill([
+            'password' => Hash::make($data['password']),
+        ])->save();
+
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+
+        Audit::log('user_password_reset_by_admin', $user, [
+            'reason' => $data['reason'],
+        ], $request->user()->id);
+
+        return back()->with('success', "Contraseña restablecida exitosamente para {$user->name}. Se cerraron sus sesiones activas.");
+    }
+
     public function destroy(Request $request, User $user): RedirectResponse
     {
         Gate::authorize('delete', $user);

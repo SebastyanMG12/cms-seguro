@@ -636,4 +636,40 @@ class SecurityTest extends TestCase
         $user->refresh();
         $this->assertTrue(Hash::check('Clave#Inicial2026', $user->password));
     }
+
+    public function test_admin_can_reset_user_password_with_reason_and_terminate_sessions(): void
+    {
+        $admin = $this->user('administrador');
+        $target = $this->user('medico');
+
+        DB::table('sessions')->insert([
+            'id' => 'sesion-activa-medico',
+            'user_id' => $target->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'TestBrowser',
+            'payload' => 'payload',
+            'last_activity' => time(),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->post("/admin/usuarios/{$target->id}/restablecer-contrasena", [
+                'password' => 'NuevaPassword123#',
+                'password_confirmation' => 'NuevaPassword123#',
+                'reason' => 'Olvido de contraseña reportado presencialmente',
+            ]);
+
+        $response->assertRedirect()->assertSessionHas('success');
+
+        $target->refresh();
+        $this->assertTrue(Hash::check('NuevaPassword123#', $target->password));
+
+        // Sesión remota cerrada
+        $this->assertDatabaseMissing('sessions', ['id' => 'sesion-activa-medico']);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'user_password_reset_by_admin',
+            'model_id' => $target->id,
+            'user_id' => $admin->id,
+        ]);
+    }
 }

@@ -34,7 +34,11 @@ class EmergencyEpisodePolicy
 
     public function addClinicalEntry(User $user, EmergencyEpisode $episode): bool
     {
-        return $user->can('episodios.atender') && ($episode->isOpen() || request()->input('type') === 'aclaracion');
+        if (in_array($episode->status, ['egresado', 'expirado'], true)) {
+            return $user->can('episodios.atender') && request()->input('type') === 'aclaracion';
+        }
+
+        return $user->can('episodios.atender') && in_array($episode->status, ['en_valoracion', 'ingresado'], true);
     }
 
     public function discharge(User $user, EmergencyEpisode $episode): bool

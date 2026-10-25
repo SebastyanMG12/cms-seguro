@@ -127,6 +127,30 @@
                     </form>
                 @endif
 
+                {{-- Restablecer Contraseña por Administrador --}}
+                <hr>
+                <form method="POST" action="{{ route('admin.users.reset-password', $user) }}" class="mb-3">
+                    @csrf
+                    <div class="fw-bold small text-dark mb-1">
+                        <i class="bi bi-key me-1 text-primary" aria-hidden="true"></i>Restablecer Contraseña
+                    </div>
+                    <div class="mb-2">
+                        <label for="new_password" class="form-label small text-muted mb-0">Nueva Contraseña</label>
+                        <input type="password" id="new_password" name="password" class="form-control form-control-sm" required placeholder="Mínimo 8 caracteres">
+                    </div>
+                    <div class="mb-2">
+                        <label for="new_password_confirmation" class="form-label small text-muted mb-0">Confirmar Contraseña</label>
+                        <input type="password" id="new_password_confirmation" name="password_confirmation" class="form-control form-control-sm" required placeholder="Repetir contraseña">
+                    </div>
+                    <div class="mb-2">
+                        <label for="pwd_reset_reason" class="form-label small text-muted mb-0">Motivo (auditoría)</label>
+                        <input type="text" id="pwd_reset_reason" name="reason" class="form-control form-control-sm" required placeholder="Ej: Olvido sin correo / restablecimiento administrativo">
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary btn-sm w-100" onclick="return confirm('¿Restablecer la contraseña de este usuario? Se cerrarán todas sus sesiones activas.')">
+                        <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Cambiar Contraseña
+                    </button>
+                </form>
+
                 {{-- Borrado Lógico --}}
                 @if (auth()->id() !== $user->id)
                     <hr>

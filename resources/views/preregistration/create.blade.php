@@ -59,7 +59,7 @@
             </div>
         @endif
 
-        <form action="{{ route('preregistro.store') }}" method="POST" id="preregistrationForm" novalidate>
+        <form action="{{ route('preregistro.store') }}" method="POST" id="preregistrationForm" autocomplete="off" novalidate>
             @csrf
 
             {{-- Honeypot anti-bot --}}

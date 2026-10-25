@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Shift;
+use App\Models\StaffProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -54,8 +56,25 @@ class UserService
             $this->ensureNotLastActiveAdmin($user, 'user', 'No se puede suspender al último administrador activo.');
         }
 
+        if ($user->staffProfile()->exists()) {
+            $activePatients = app(ClinicalService::class)->countActivePatients($user);
+            if ($activePatients > 0) {
+                throw ValidationException::withMessages([
+                    'user' => "No se puede suspender al usuario. El profesional tiene {$activePatients} paciente(s) activos asignados en urgencias. Debe reasignar sus pacientes antes de suspender su cuenta.",
+                ]);
+            }
+        }
+
         DB::transaction(function () use ($user, $reason): void {
             $user->forceFill(['status' => 'suspended'])->save();
+
+            // Sincronizar estado asistencial
+            if ($user->staffProfile) {
+                $user->staffProfile->forceFill(['status' => StaffProfile::STATUS_INACTIVO])->save();
+            }
+
+            // Finalizar turnos activos por suspensión
+            $user->shifts()->where('status', Shift::STATUS_ACTIVO)->update(['status' => Shift::STATUS_FINALIZADO]);
 
             DB::table('sessions')->where('user_id', $user->id)->delete();
 
@@ -67,6 +86,10 @@ class UserService
     {
         DB::transaction(function () use ($user, $reason): void {
             $user->forceFill(['status' => 'active'])->save();
+
+            if ($user->staffProfile) {
+                $user->staffProfile->forceFill(['status' => StaffProfile::STATUS_ACTIVO])->save();
+            }
 
             Audit::log('user_reactivated', $user, ['reason' => $reason]);
         });

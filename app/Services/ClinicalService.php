@@ -138,6 +138,12 @@ class ClinicalService
             $now = now();
 
             if ($role === 'responsable') {
+                if ($locked->responsible_user_id === $staffUser->id) {
+                    throw ValidationException::withMessages([
+                        'staff' => "El profesional {$staffUser->name} ya se encuentra asignado como médico responsable de este episodio.",
+                    ]);
+                }
+
                 // Finalizar asignación de responsable anterior si existe
                 EpisodeAssignment::where('episode_id', $locked->id)
                     ->where('role', 'responsable')
@@ -155,7 +161,9 @@ class ClinicalService
                     ->first();
 
                 if ($existing) {
-                    return $existing;
+                    throw ValidationException::withMessages([
+                        'staff' => "El profesional {$staffUser->name} ya se encuentra asignado como personal de apoyo en este episodio.",
+                    ]);
                 }
             }
 

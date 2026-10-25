@@ -321,12 +321,18 @@
         <div class="card shadow-sm mb-3">
             <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
                 <h2 class="h6 mb-0 fw-bold text-dark"><i class="bi bi-journal-medical me-1" aria-hidden="true"></i>Evolución y Entradas Clínicas (Inmutables)</h2>
-                @if ($episode->isOpen())
+                @if (in_array($episode->status, ['en_valoracion', 'ingresado']))
                     @can('episodios.atender')
                         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#entryModal">
                             <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Registrar Entrada Clínica
                         </button>
                     @endcan
+                @elseif ($episode->isOpen())
+                    <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="El paciente debe encontrarse en valoración o ingresado para registrar notas clínicas o diagnósticos.">
+                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                            <i class="bi bi-lock me-1" aria-hidden="true"></i> Registrar Entrada Clínica
+                        </button>
+                    </span>
                 @else
                     {{-- Si el episodio está cerrado, la única acción admitida es aclaración posterior --}}
                     @can('episodios.atender')

@@ -14,6 +14,7 @@ use App\Models\StaffProfile;
 use App\Models\User;
 use App\Services\ClinicalService;
 use App\Services\EpisodeStateMachine;
+use App\Services\UserService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -363,5 +364,39 @@ class MedicalEpisodeTest extends TestCase
             'discharge_type' => 'alta_medica',
         ]);
         $resAuditDischarge->assertStatus(403);
+    }
+
+    public function test_cannot_assign_same_doctor_twice_as_responsible(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+
+        $this->expectException(ValidationException::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+    }
+
+    public function test_cannot_add_clinical_entry_to_preregistered_patient(): void
+    {
+        // El episodio está en preregistrado (el paciente aún no llega al hospital)
+        $this->assertSame('preregistrado', $this->episode->status);
+
+        $resEntry = $this->actingAs($this->doctor)->post(route('episodes.entries.store', $this->episode), [
+            'type' => 'diagnostico',
+            'content' => 'Intento de diagnóstico antes de llegada física',
+        ]);
+
+        $resEntry->assertStatus(403);
+    }
+
+    public function test_cannot_suspend_doctor_with_active_assigned_patients(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole('administrador');
+
+        $this->expectException(ValidationException::class);
+        app(UserService::class)->suspend($this->doctor, 'Sanción disciplinaria', $admin);
     }
 }
