@@ -13,9 +13,7 @@ use PragmaRX\Google2FA\Google2FA;
 
 class TwoFactor
 {
-    public function __construct(private Google2FA $google2fa)
-    {
-    }
+    public function __construct(private Google2FA $google2fa) {}
 
     public function generateSecret(): string
     {
@@ -24,8 +22,22 @@ class TwoFactor
 
     public function verify(string $secret, string $code): bool
     {
-        // Ventana de 1: acepta el código anterior y el siguiente por desfase de reloj.
-        return (bool) $this->google2fa->verifyKey($secret, $code, 1);
+        return $this->verifyAndGetTimestep($secret, $code, null) !== false;
+    }
+
+    /**
+     * Devuelve el intervalo de tiempo aceptado, o false si el código es inválido
+     * o ya fue usado (intervalo menor o igual al último aceptado).
+     */
+    public function verifyAndGetTimestep(string $secret, string $code, ?int $lastTimestep): int|false
+    {
+        $result = $this->google2fa->verifyKeyNewer($secret, $code, $lastTimestep ?? 0, 1);
+
+        if ($result === true) {
+            $result = $this->google2fa->getTimestamp();
+        }
+
+        return $result === false ? false : (int) $result;
     }
 
     public function currentCode(string $secret): string
@@ -37,7 +49,7 @@ class TwoFactor
     {
         $url = $this->google2fa->getQRCodeUrl(config('app.name'), $user->email, $secret);
 
-        $writer = new Writer(new ImageRenderer(new RendererStyle(200), new SvgImageBackEnd()));
+        $writer = new Writer(new ImageRenderer(new RendererStyle(200), new SvgImageBackEnd));
 
         return $writer->writeString($url);
     }

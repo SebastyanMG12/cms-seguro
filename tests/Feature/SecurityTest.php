@@ -5,14 +5,14 @@ namespace Tests\Feature;
 use App\Models\PasswordResetCode;
 use App\Models\ReceivedEmail;
 use App\Models\User;
+use App\Services\Mail\MailSource;
+use App\Services\TwoFactor;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
-use App\Services\Mail\MailSource;
-use Database\Seeders\RolesAndPermissionsSeeder;
-use App\Services\TwoFactor;
 
 class SecurityTest extends TestCase
 {
@@ -25,11 +25,18 @@ class SecurityTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
     }
 
-    private function user(string $role = 'autor', string $status = 'active'): User
+    private function user(string $role = 'autor', string $status = 'active', bool $withTwoFactor = true): User
     {
         $user = User::factory()->create();
         $user->forceFill(['status' => $status])->save();
         $user->assignRole($role);
+
+        if ($withTwoFactor) {
+            $user->forceFill([
+                'two_factor_secret' => app(TwoFactor::class)->generateSecret(),
+                'two_factor_confirmed_at' => now(),
+            ])->save();
+        }
 
         return $user;
     }
@@ -200,30 +207,32 @@ class SecurityTest extends TestCase
 
     public function test_receive_command_is_idempotent(): void
     {
-        $this->app->bind(MailSource::class, fn() => new class implements MailSource {
+        $this->app->bind(MailSource::class, fn () => new class implements MailSource
+        {
             public function fetch(int $limit = 10): array
-                {
-                    return [
-                        [
-                            'message_id' => '<test-1@x.test>',
-                            'from_email' => 'a@x.test',
-                            'from_name' => 'A',
-                            'subject' => 'Hola',
-                            'body' => 'Texto',
-                            'received_at' => '2026-10-23 10:00:00',
-                        ]
-                    ];
-                }
-            });
+            {
+                return [
+                    [
+                        'message_id' => '<test-1@x.test>',
+                        'from_email' => 'a@x.test',
+                        'from_name' => 'A',
+                        'subject' => 'Hola',
+                        'body' => 'Texto',
+                        'received_at' => '2026-10-23 10:00:00',
+                    ],
+                ];
+            }
+        });
 
         $this->artisan('mail:receive')->assertSuccessful();
         $this->artisan('mail:receive')->assertSuccessful();
 
         $this->assertDatabaseCount('received_emails', 1);
     }
+
     public function test_user_can_enable_two_factor_with_valid_code(): void
     {
-        $user = $this->user('medico');
+        $user = $this->user('medico', 'active', false);
 
         $this->actingAs($user)->get('/seguridad/2fa')->assertOk();
 
@@ -242,7 +251,7 @@ class SecurityTest extends TestCase
 
     public function test_two_factor_rejects_invalid_code(): void
     {
-        $user = $this->user('medico');
+        $user = $this->user('medico', 'active', false);
 
         $this->actingAs($user)->get('/seguridad/2fa');
         $this->actingAs($user)->post('/seguridad/2fa/confirmar', ['code' => '000000'])
@@ -253,7 +262,7 @@ class SecurityTest extends TestCase
 
     public function test_two_factor_secret_is_encrypted_in_database(): void
     {
-        $user = $this->user('medico');
+        $user = $this->user('medico', 'active', false);
 
         $this->actingAs($user)->get('/seguridad/2fa');
 
@@ -261,5 +270,88 @@ class SecurityTest extends TestCase
         $plain = $user->fresh()->two_factor_secret;
 
         $this->assertNotSame($plain, $raw);
+    }
+
+    public function test_login_requires_second_factor_when_enabled(): void
+    {
+        $user = $this->user('medico');
+        $user->forceFill([
+            'password' => bcrypt('Clave#Segura2026'),
+            'two_factor_secret' => app(TwoFactor::class)->generateSecret(),
+            'two_factor_confirmed_at' => now(),
+        ])->save();
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'Clave#Segura2026'])
+            ->assertRedirect(route('two-factor.challenge'));
+
+        $this->assertGuest();
+    }
+
+    public function test_second_factor_completes_login(): void
+    {
+        $secret = app(TwoFactor::class)->generateSecret();
+        $user = $this->user('medico');
+        $user->forceFill([
+            'password' => bcrypt('Clave#Segura2026'),
+            'two_factor_secret' => $secret,
+            'two_factor_confirmed_at' => now(),
+        ])->save();
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'Clave#Segura2026']);
+
+        $this->post('/login/2fa', ['code' => app(TwoFactor::class)->currentCode($secret)])
+            ->assertRedirect();
+
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_totp_code_cannot_be_reused(): void
+    {
+        $secret = app(TwoFactor::class)->generateSecret();
+        $user = $this->user('medico');
+        $user->forceFill([
+            'password' => bcrypt('Clave#Segura2026'),
+            'two_factor_secret' => $secret,
+            'two_factor_confirmed_at' => now(),
+        ])->save();
+
+        $code = app(TwoFactor::class)->currentCode($secret);
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'Clave#Segura2026']);
+        $this->post('/login/2fa', ['code' => $code]);
+        $this->post('/logout');
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'Clave#Segura2026']);
+        $this->post('/login/2fa', ['code' => $code])->assertSessionHasErrors('code');
+
+        $this->assertGuest();
+    }
+
+    public function test_staff_without_two_factor_is_redirected_to_enable_it(): void
+    {
+        $this->actingAs($this->user('medico', 'active', false))->get('/dashboard')
+            ->assertRedirect(route('two-factor.show'));
+    }
+
+    public function test_recovery_code_works_only_once(): void
+    {
+        $secret = app(TwoFactor::class)->generateSecret();
+        $codes = app(TwoFactor::class)->generateRecoveryCodes(2);
+        $user = $this->user('medico');
+        $user->forceFill([
+            'password' => bcrypt('Clave#Segura2026'),
+            'two_factor_secret' => $secret,
+            'two_factor_confirmed_at' => now(),
+            'two_factor_recovery_codes' => $codes['hashed'],
+        ])->save();
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'Clave#Segura2026']);
+        $this->post('/login/2fa', ['recovery_code' => $codes['plain'][0]]);
+        $this->assertAuthenticatedAs($user);
+        $this->post('/logout');
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'Clave#Segura2026']);
+        $this->post('/login/2fa', ['recovery_code' => $codes['plain'][0]])->assertSessionHasErrors('code');
+        $this->assertGuest();
     }
 }

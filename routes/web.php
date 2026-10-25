@@ -4,13 +4,14 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReceivedEmailController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Security\TwoFactorController;
+use Illuminate\Support\Facades\Route;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -28,6 +29,13 @@ Route::middleware('guest')->group(function () {
         ->middleware('throttle:login')
         ->name('login.store');
 
+    Route::get('/login/2fa', [TwoFactorChallengeController::class, 'create'])
+        ->name('two-factor.challenge');
+
+    Route::post('/login/2fa', [TwoFactorChallengeController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('two-factor.challenge.store');
+
     Route::get('/recuperar', [PasswordResetController::class, 'requestForm'])->name('password.request');
     Route::post('/recuperar', [PasswordResetController::class, 'sendCode'])
         ->middleware('throttle:5,1')->name('password.email');
@@ -41,8 +49,8 @@ Route::middleware('guest')->group(function () {
         ->middleware('throttle:5,1')->name('password.update');
 });
 
-// Solo usuarios autenticados y activos
-Route::middleware(['auth', 'active'])->group(function () {
+// Solo usuarios autenticados, activos y sujetos a la verificación 2FA
+Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::get('/seguridad/2fa', [TwoFactorController::class, 'show'])
         ->name('two-factor.show');
 
