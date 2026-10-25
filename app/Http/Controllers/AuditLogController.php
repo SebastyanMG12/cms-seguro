@@ -11,7 +11,7 @@ class AuditLogController extends Controller
 {
     public function index(Request $request): View
     {
-        Gate::authorize('view-audit');
+        Gate::authorize('auditoria.ver');
 
         $logs = AuditLog::with('user')
             ->when($request->filled('event'), fn ($q) => $q->where('event', $request->string('event')))

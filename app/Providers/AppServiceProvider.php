@@ -34,9 +34,5 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(20)->by('ip|' . $request->ip()),
             ];
         });
-
-        Gate::define('view-inbox', fn(User $user) => $user->hasRole('admin', 'editor'));
-        Gate::define('manage-users', fn(User $user) => $user->isAdmin());
-        Gate::define('view-audit', fn(User $user) => $user->isAdmin());
     }
 }

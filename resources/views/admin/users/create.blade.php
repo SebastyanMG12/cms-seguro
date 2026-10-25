@@ -16,12 +16,17 @@
     </div>
     <div class="mb-3">
         <label for="role" class="form-label">Rol</label>
-        <select id="role" name="role" class="form-select">
-            <option value="author" @selected(old('role') === 'author')>Autor</option>
-            <option value="editor" @selected(old('role') === 'editor')>Editor</option>
-            <option value="admin" @selected(old('role') === 'admin')>Administrador</option>
-        </select>
-        @error('role') <div class="text-danger small">{{ $message }}</div> @enderror
+        <div class="mb-3">
+    <label class="form-label">Roles</label>
+    @foreach ($roles as $role)
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="roles[]" id="role_{{ $role }}"
+                   value="{{ $role }}" @checked(in_array($role, old('roles', [])))>
+            <label class="form-check-label" for="role_{{ $role }}">{{ $role }}</label>
+        </div>
+    @endforeach
+    @error('roles') <div class="text-danger small">{{ $message }}</div> @enderror
+</div>
     </div>
     <div class="mb-3">
         <label for="password" class="form-label">Contraseña</label>

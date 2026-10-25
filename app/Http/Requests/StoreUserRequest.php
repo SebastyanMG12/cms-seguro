@@ -3,13 +3,14 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() ?? false;
+        return $this->user()?->can('usuarios.gestionar') ?? false;
     }
 
     protected function prepareForValidation(): void
@@ -22,7 +23,8 @@ class StoreUserRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:2', 'max:100'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'role' => ['required', 'in:admin,editor,author'],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['string', Rule::exists('roles', 'name')],
             'password' => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()->symbols()],
         ];
     }

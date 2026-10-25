@@ -11,15 +11,24 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 use App\Services\Mail\MailSource;
+use Database\Seeders\RolesAndPermissionsSeeder;
 
 class SecurityTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function user(string $role = 'author', string $status = 'active'): User
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(RolesAndPermissionsSeeder::class);
+    }
+
+    private function user(string $role = 'autor', string $status = 'active'): User
     {
         $user = User::factory()->create();
-        $user->forceFill(['role' => $role, 'status' => $status])->save();
+        $user->forceFill(['status' => $status])->save();
+        $user->assignRole($role);
 
         return $user;
     }
@@ -31,17 +40,17 @@ class SecurityTest extends TestCase
 
     public function test_author_cannot_view_inbox(): void
     {
-        $this->actingAs($this->user('author'))->get('/correos')->assertForbidden();
+        $this->actingAs($this->user('autor'))->get('/correos')->assertForbidden();
     }
 
     public function test_admin_can_view_inbox(): void
     {
-        $this->actingAs($this->user('admin'))->get('/correos')->assertOk();
+        $this->actingAs($this->user('administrador'))->get('/correos')->assertOk();
     }
 
     public function test_author_cannot_view_audit(): void
     {
-        $this->actingAs($this->user('author'))->get('/auditoria')->assertForbidden();
+        $this->actingAs($this->user('autor'))->get('/auditoria')->assertForbidden();
     }
 
     public function test_public_registration_is_closed(): void
@@ -53,19 +62,32 @@ class SecurityTest extends TestCase
     public function test_only_admin_can_create_users(): void
     {
         $payload = [
-            'name' => 'Nuevo',
-            'email' => 'nuevo@x.test',
-            'role' => 'author',
-            'password' => 'Clave#Segura2026',
-            'password_confirmation' => 'Clave#Segura2026',
+            'name' => 'Nuevo', 'email' => 'nuevo@x.test', 'roles' => ['autor', 'editor'],
+            'password' => 'Clave#Segura2026', 'password_confirmation' => 'Clave#Segura2026',
         ];
 
-        $this->actingAs($this->user('author'))->post('/admin/usuarios', $payload)->assertForbidden();
+        $this->actingAs($this->user('autor'))->post('/admin/usuarios', $payload)->assertForbidden();
         $this->assertDatabaseMissing('users', ['email' => 'nuevo@x.test']);
 
-        $this->actingAs($this->user('admin'))->post('/admin/usuarios', $payload)
+        $this->actingAs($this->user('administrador'))->post('/admin/usuarios', $payload)
             ->assertRedirect(route('admin.users.index'));
-        $this->assertDatabaseHas('users', ['email' => 'nuevo@x.test', 'role' => 'author']);
+
+        $nuevo = User::where('email', 'nuevo@x.test')->firstOrFail();
+        $this->assertTrue($nuevo->hasAllRoles(['autor', 'editor']));
+    }
+
+    public function test_user_can_have_multiple_roles(): void
+    {
+        $user = $this->user('administrador');
+        $user->assignRole('auditor');
+
+        $this->actingAs($user)->get('/auditoria')->assertOk();
+        $this->actingAs($user)->get('/admin/usuarios')->assertOk();
+    }
+
+    public function test_admin_without_auditor_role_cannot_view_audit(): void
+    {
+        $this->actingAs($this->user('administrador'))->get('/auditoria')->assertForbidden();
     }
 
     public function test_user_cannot_view_other_users_post(): void
@@ -79,7 +101,7 @@ class SecurityTest extends TestCase
 
     public function test_suspended_user_cannot_login(): void
     {
-        $user = $this->user('author', 'suspended');
+        $user = $this->user('autor', 'suspended');
 
         $this->post('/login', ['email' => $user->email, 'password' => 'password']);
 
@@ -95,7 +117,7 @@ class SecurityTest extends TestCase
             'body' => 'x',
         ]);
 
-        $this->actingAs($this->user('admin'))->get('/correos')
+        $this->actingAs($this->user('administrador'))->get('/correos')
             ->assertDontSee('<script>alert(1)</script>', false)
             ->assertSee('&lt;script&gt;', false);
     }
@@ -165,6 +187,7 @@ class SecurityTest extends TestCase
 
         Mail::assertNothingSent();
     }
+
     public function test_session_cookie_is_http_only(): void
     {
         $this->assertTrue(config('session.http_only'));
@@ -175,19 +198,19 @@ class SecurityTest extends TestCase
     {
         $this->app->bind(MailSource::class, fn() => new class implements MailSource {
             public function fetch(int $limit = 10): array
-                {
-                    return [
-                        [
-                            'message_id' => '<test-1@x.test>',
-                            'from_email' => 'a@x.test',
-                            'from_name' => 'A',
-                            'subject' => 'Hola',
-                            'body' => 'Texto',
-                            'received_at' => '2026-10-23 10:00:00',
-                        ]
-                    ];
-                }
-            });
+            {
+                return [
+                    [
+                        'message_id' => '<test-1@x.test>',
+                        'from_email' => 'a@x.test',
+                        'from_name' => 'A',
+                        'subject' => 'Hola',
+                        'body' => 'Texto',
+                        'received_at' => '2026-10-23 10:00:00',
+                    ]
+                ];
+            }
+        });
 
         $this->artisan('mail:receive')->assertSuccessful();
         $this->artisan('mail:receive')->assertSuccessful();

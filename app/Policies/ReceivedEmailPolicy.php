@@ -9,11 +9,11 @@ class ReceivedEmailPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('admin', 'editor');
+        return $user->hasPermissionTo('correos.ver');
     }
 
     public function view(User $user, ReceivedEmail $email): bool
     {
-        return $user->hasRole('admin', 'editor');
+        return $user->hasPermissionTo('correos.ver');
     }
 }
