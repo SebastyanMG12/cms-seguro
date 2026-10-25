@@ -45,3 +45,4 @@ No hay usuarios por defecto. Créalo con php artisan tinker.
 
 - Terminal 1 php artisan serve
 - Terminal 2 npm run dev
+- php artisan schedule:work #actualizar cada 5 minutos si hay tareas o no pendientes tercera terminal
