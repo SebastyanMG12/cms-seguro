@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\EmergencyEpisode;
+use App\Policies\EmergencyEpisodePolicy;
 use App\Services\Mail\FakeMailSource;
 use App\Services\Mail\ImapMailSource;
 use App\Services\Mail\MailSource;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -32,5 +35,10 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(20)->by('ip|'.$request->ip()),
             ];
         });
+
+        Gate::policy(
+            EmergencyEpisode::class,
+            EmergencyEpisodePolicy::class
+        );
     }
 }

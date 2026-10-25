@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Hospital\MedicalEpisodeController;
 use App\Http\Controllers\Hospital\OccupancyController;
 use App\Http\Controllers\Hospital\PhysicalResourceController;
 use App\Http\Controllers\Hospital\PreregistrationController;
@@ -142,4 +143,34 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::post('/turnos/{shift}/finalizar', [ShiftController::class, 'end'])
         ->whereNumber('shift')
         ->name('shifts.end');
+
+    // Módulo médico de urgencias (Fase 4)
+    Route::get('/episodios', [MedicalEpisodeController::class, 'index'])->name('episodes.index');
+    Route::get('/episodios/{episode}', [MedicalEpisodeController::class, 'show'])
+        ->whereUuid('episode')
+        ->name('episodes.show');
+    Route::post('/episodios/{episode}/llegada', [MedicalEpisodeController::class, 'registerArrival'])
+        ->whereUuid('episode')
+        ->name('episodes.arrival');
+    Route::post('/episodios/{episode}/triage', [MedicalEpisodeController::class, 'assignTriage'])
+        ->whereUuid('episode')
+        ->name('episodes.triage');
+    Route::post('/episodios/{episode}/ingreso', [MedicalEpisodeController::class, 'confirmAdmission'])
+        ->whereUuid('episode')
+        ->name('episodes.admission');
+    Route::post('/episodios/{episode}/egreso', [MedicalEpisodeController::class, 'discharge'])
+        ->whereUuid('episode')
+        ->name('episodes.discharge');
+    Route::post('/episodios/{episode}/entradas', [MedicalEpisodeController::class, 'addClinicalEntry'])
+        ->whereUuid('episode')
+        ->name('episodes.entries.store');
+    Route::post('/episodios/{episode}/personal', [MedicalEpisodeController::class, 'assignStaff'])
+        ->whereUuid('episode')
+        ->name('episodes.staff.assign');
+    Route::post('/episodios/{episode}/camilla', [MedicalEpisodeController::class, 'assignBed'])
+        ->whereUuid('episode')
+        ->name('episodes.bed.assign');
+    Route::post('/episodios/{episode}/acompanante', [MedicalEpisodeController::class, 'updateCompanion'])
+        ->whereUuid('episode')
+        ->name('episodes.companion.update');
 });

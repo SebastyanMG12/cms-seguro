@@ -5,8 +5,8 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 1. Fase actual
-- **Fase:** Fase 3: Pre-registro público (Completada con éxito).
-- **Rama:** `feature/fase-3-preregistro`
+- **Fase:** Fase 4: Módulo médico (Completada con éxito).
+- **Rama:** `feature/fase-4-modulo-medico`
 
 ---
 
@@ -86,21 +86,39 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 - **Expiración programada de pre-registros**:
   - Comando `php artisan hospital:expire-preregistrations` programado cada hora en `routes/console.php`.
   - Transiciona a `expirado` aquellos pre-registros con más de 24 horas (configurable en `config/hospital.php`) sin haber sido admitidos, registrando evento de auditoría.
-- **Pruebas de aceptación**:
-  - 15 pruebas dedicadas en `tests/Feature/PreregistrationTest.php`.
+
+### Fase 4: Módulo médico
+- **Máquina de estados clínica (`EpisodeStateMachine`)**:
+  - Transición secuencial con bloqueo `lockForUpdate`: `preregistrado` -> `en_espera` (llegada) -> `en_valoracion` (triage I-V) -> `ingresado` (confirmar ingreso) -> `egresado` (cierre médico con tipo: alta médica, remisión, alta voluntaria, abandono, fallecimiento).
+  - Validación temporal estricta: `llegada <= ingreso <= egreso`.
+  - Restricción física: una camilla solo puede asignarse si el episodio se encuentra en estado `ingresado`.
+  - Al registrar el egreso, la camilla asignada se libera automáticamente y transiciona a estado `en_limpieza`.
+- **Integridad e inmutabilidad clínica (Resolución 1995 de 1999)**:
+  - Modelo `ClinicalEntry` inmutable (bloqueo a nivel de eventos `updating` y `deleting`). Contenido clínico cifrado en base de datos (`casts => encrypted`). Hora fijada por el servidor (`performed_at`).
+  - Correcciones auditadas: las aclaraciones y anulaciones exigen referencia obligatoria (`references_entry_id`) y motivo justificado (`reason`), preservando visible el historial clínico completo.
+  - Regla de cierre: con episodio en estado `egresado`, se rechaza cualquier nueva entrada ordinaria; únicamente se permite agregar notas aclaratorias posteriores justificadas.
+- **Asignación asistencial y cálculo de carga**:
+  - Asignación de médico responsable (único) y apoyos de enfermería.
+  - Validación de disponibilidad: se impide asignar profesionales con perfil inactivo, en descanso (`en_descanso`) o sin turno activo.
+  - Contador dinámico de pacientes activos asignados por profesional (`ClinicalService::countActivePatients`), calculado en tiempo de consulta.
+- **Auditoría de lectura y acceso excepcional**:
+  - Cada visualización de una historia clínica audita el evento `historia.lectura`.
+  - Si un profesional accede a un episodio al cual no está asignado, se exige motivo y se genera auditoría de `historia.acceso_excepcional`.
+- **Interfaz de alta densidad y accesibilidad WCAG 2.2 AA**:
+  - Tablero de episodios con pestañas filtradas (`activos`, `en_espera`, `preregistrados`, `egresados`), resaltado del paciente seleccionado en azul (`.selected-patient`).
+  - Barra de acciones con habilitación dinámica según el estado del episodio y tooltips explicativos en acciones deshabilitadas; variante de solo lectura para episodios cerrados.
 
 ---
 
 ## 3. Decisiones técnicas
-- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` antes de asignar o liberar camillas y al procesar expiración de episodios para evitar condiciones de carrera simultáneas.
-- **HMAC Blind Index**: El índice ciego sobre el documento del paciente permite búsqueda exacta de antecedentes sin comprometer el cifrado en reposo y sin requerir descifrado masivo en memoria.
-- **Separación de Consentimientos**: Cumplimiento riguroso de la Ley 1581 de 2012 mediante filas independientes en `consents` para tratamiento general de urgencias y compartición a terceros/acompañante.
-- **Content-Security-Policy sin inline scripts**: Toda la interactividad del pre-registro (cambio de tipo de documento, detalle de alergias, banderas de signos de alarma, contadores de caracteres) se empaquetó en `resources/js/app.js` compilado con Vite.
+- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` en todas las transiciones de estado clínico, asignación de camillas y personal asistencial.
+- **Inmutabilidad Médica (Res. 1995/1999)**: Protección en Eloquent (`booted`) y base de datos contra edición o borrado de evoluciones clínicas; el modelo solo admite adición de notas aclaratorias o anulaciones enlazadas.
+- **Contador Dinámico de Carga**: Evita campos desnormalizados propensos a inconsistencias; calcula los episodios abiertos activos directamente sobre `episode_assignments`.
+- **Diseño sin Emojis y Accesible**: Reemplazo total de emojis por iconografía lineal Bootstrap Icons local compilada con Vite, tokens de diseño con contraste verificado >= 4.5:1 y objetivos táctiles de 44px.
 
 ---
 
 ## 4. Pendientes para siguientes fases
-- **Fase 4**: Módulo médico (listado de episodios con filtros, registrar llegada, asignar triage I a V, confirmar ingreso, asignar personal y camilla, registrar egreso, entradas clínicas inmutables con aclaración/anulación).
 - **Fase 4B**: Registro de emergencia (paciente sin identificar / NN, conciliación de identidad).
 - **Fase 5**: Módulo acompañante (código público + PIN presencial, rate limiting, revocación y actualización periódica).
 - **Fase 6**: Administración avanzada, reportes y generación de PDF con marca de agua.
@@ -110,11 +128,12 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 5. Última prueba exitosa
-- **Fecha y hora:** 2026-10-25 16:01:43 -05:00
+- **Fecha y hora:** 2026-10-25 16:43:29 -05:00
 - **Comando ejecutado:** `php artisan test`
-- **Resultado:** 65 pasadas, 0 fallidas (237 aserciones). Tiempo: 23.15s
+- **Resultado:** 77 pasadas, 0 fallidas (279 aserciones). Tiempo: 48.31s
   - `Tests\Unit\ExampleTest`: 1 pasada
   - `Tests\Feature\ExampleTest`: 1 pasada
+  - `Tests\Feature\MedicalEpisodeTest`: 12 pasadas
   - `Tests\Feature\PhysicalResourcesAndStaffTest`: 10 pasadas
   - `Tests\Feature\PreregistrationTest`: 15 pasadas
   - `Tests\Feature\SecurityTest`: 38 pasadas

@@ -34,6 +34,13 @@
         Verificación en dos pasos
     </a>
 
+    @can('episodios.ver')
+        <a href="{{ route('episodes.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('episodes.*') ? 'active' : '' }}">
+            <i class="bi bi-hospital me-1" aria-hidden="true"></i> Módulo de Urgencias
+        </a>
+    @endcan
+
     @can('ocupacion.ver')
         <a href="{{ route('occupancy.index') }}"
             class="list-group-item list-group-item-action {{ request()->routeIs('occupancy.*') ? 'active' : '' }}">

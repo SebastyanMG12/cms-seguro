@@ -23,6 +23,15 @@ class RolesAndPermissionsSeeder extends Seeder
             'personal.gestionar',
             'turnos.gestionar',
             'ocupacion.ver',
+            // Módulo médico (Fase 4)
+            'episodios.ver',
+            'episodios.llegada',
+            'episodios.triage',
+            'episodios.ingreso',
+            'episodios.atender',
+            'episodios.egreso',
+            'episodios.asignar_personal',
+            'episodios.asignar_camilla',
         ];
 
         foreach ($permissions as $name) {
@@ -39,6 +48,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'personal.gestionar',
                 'turnos.gestionar',
                 'ocupacion.ver',
+                'episodios.ver',
+                'episodios.asignar_personal',
             ],
             'coordinador' => [
                 'correos.ver',
@@ -46,18 +57,40 @@ class RolesAndPermissionsSeeder extends Seeder
                 'personal.gestionar',
                 'turnos.gestionar',
                 'ocupacion.ver',
-            ],
-            'auditor' => [
-                'auditoria.ver',
+                'episodios.ver',
+                'episodios.llegada',
+                'episodios.triage',
+                'episodios.ingreso',
+                'episodios.egreso',
+                'episodios.asignar_personal',
+                'episodios.asignar_camilla',
             ],
             'medico' => [
                 'ocupacion.ver',
+                'episodios.ver',
+                'episodios.triage',
+                'episodios.ingreso',
+                'episodios.atender',
+                'episodios.egreso',
+                'episodios.asignar_camilla',
             ],
             'enfermero' => [
                 'ocupacion.ver',
+                'episodios.ver',
+                'episodios.llegada',
+                'episodios.triage',
+                'episodios.ingreso',
+                'episodios.atender',
+                'episodios.asignar_camilla',
             ],
             'admisiones' => [
                 'ocupacion.ver',
+                'episodios.ver',
+                'episodios.llegada',
+            ],
+            'auditor' => [
+                'auditoria.ver',
+                'episodios.ver',
             ],
             'editor' => [
                 'correos.ver',

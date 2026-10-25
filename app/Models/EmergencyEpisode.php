@@ -23,6 +23,8 @@ class EmergencyEpisode extends Model
         'origin',
         'status',
         'triage_level',
+        'triage_user_id',
+        'triage_at',
         'reason',
         'arrived_at',
         'admitted_at',
@@ -35,6 +37,7 @@ class EmergencyEpisode extends Model
 
     protected $casts = [
         'arrived_at' => 'datetime',
+        'triage_at' => 'datetime',
         'admitted_at' => 'datetime',
         'discharged_at' => 'datetime',
         'closed_at' => 'datetime',
@@ -66,9 +69,44 @@ class EmergencyEpisode extends Model
         return $this->belongsTo(User::class, 'responsible_user_id');
     }
 
+    public function triageUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'triage_user_id');
+    }
+
     public function bedAssignments(): HasMany
     {
         return $this->hasMany(BedAssignment::class, 'episode_id');
+    }
+
+    public function activeBedAssignment(): HasOne
+    {
+        return $this->hasOne(BedAssignment::class, 'episode_id')->whereNull('released_at');
+    }
+
+    public function clinicalEntries(): HasMany
+    {
+        return $this->hasMany(ClinicalEntry::class, 'episode_id')->orderBy('performed_at', 'asc');
+    }
+
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(EpisodeAssignment::class, 'episode_id');
+    }
+
+    public function activeAssignments(): HasMany
+    {
+        return $this->hasMany(EpisodeAssignment::class, 'episode_id')->whereNull('ended_at');
+    }
+
+    public function isOpen(): bool
+    {
+        return ! in_array($this->status, ['egresado', 'expirado'], true);
+    }
+
+    public function isClosed(): bool
+    {
+        return in_array($this->status, ['egresado', 'expirado'], true);
     }
 
     /**
@@ -76,7 +114,6 @@ class EmergencyEpisode extends Model
      */
     public static function generatePublicCode(): string
     {
-        // 32-character unambiguous charset
         $chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
         $maxIndex = strlen($chars) - 1;
 
