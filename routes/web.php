@@ -9,6 +9,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Hospital\OccupancyController;
 use App\Http\Controllers\Hospital\PhysicalResourceController;
+use App\Http\Controllers\Hospital\PreregistrationController;
 use App\Http\Controllers\Hospital\ShiftController;
 use App\Http\Controllers\Hospital\StaffController;
 use App\Http\Controllers\PageController;
@@ -25,6 +26,13 @@ Route::get('/contacto', [ContactController::class, 'create'])->name('contact.cre
 Route::post('/contacto', [ContactController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('contact.store');
+
+// Pre-registro público de urgencias (sin cuenta)
+Route::get('/preregistro', [PreregistrationController::class, 'create'])->name('preregistro.create');
+Route::post('/preregistro', [PreregistrationController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('preregistro.store');
+Route::get('/preregistro/exito/{code}', [PreregistrationController::class, 'success'])->name('preregistro.success');
 
 // Solo visitantes (no autenticados)
 // Registro público cerrado: los usuarios los crea un administrador.

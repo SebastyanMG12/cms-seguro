@@ -22,6 +22,10 @@
                     <a class="nav-link {{ request()->routeIs('contact.*') ? 'active' : '' }}"
                         href="{{ route('contact.create') }}">Contacto</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-semibold {{ request()->routeIs('preregistro.*') ? 'active' : '' }}"
+                        href="{{ route('preregistro.create') }}">Pre-registro Urgencias</a>
+                </li>
 
                 @auth
                     <li class="nav-item">
