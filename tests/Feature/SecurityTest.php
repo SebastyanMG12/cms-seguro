@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 use App\Services\Mail\MailSource;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use App\Services\TwoFactor;
 
 class SecurityTest extends TestCase
 {
@@ -62,8 +63,11 @@ class SecurityTest extends TestCase
     public function test_only_admin_can_create_users(): void
     {
         $payload = [
-            'name' => 'Nuevo', 'email' => 'nuevo@x.test', 'roles' => ['autor', 'editor'],
-            'password' => 'Clave#Segura2026', 'password_confirmation' => 'Clave#Segura2026',
+            'name' => 'Nuevo',
+            'email' => 'nuevo@x.test',
+            'roles' => ['autor', 'editor'],
+            'password' => 'Clave#Segura2026',
+            'password_confirmation' => 'Clave#Segura2026',
         ];
 
         $this->actingAs($this->user('autor'))->post('/admin/usuarios', $payload)->assertForbidden();
@@ -198,23 +202,64 @@ class SecurityTest extends TestCase
     {
         $this->app->bind(MailSource::class, fn() => new class implements MailSource {
             public function fetch(int $limit = 10): array
-            {
-                return [
-                    [
-                        'message_id' => '<test-1@x.test>',
-                        'from_email' => 'a@x.test',
-                        'from_name' => 'A',
-                        'subject' => 'Hola',
-                        'body' => 'Texto',
-                        'received_at' => '2026-10-23 10:00:00',
-                    ]
-                ];
-            }
-        });
+                {
+                    return [
+                        [
+                            'message_id' => '<test-1@x.test>',
+                            'from_email' => 'a@x.test',
+                            'from_name' => 'A',
+                            'subject' => 'Hola',
+                            'body' => 'Texto',
+                            'received_at' => '2026-10-23 10:00:00',
+                        ]
+                    ];
+                }
+            });
 
         $this->artisan('mail:receive')->assertSuccessful();
         $this->artisan('mail:receive')->assertSuccessful();
 
         $this->assertDatabaseCount('received_emails', 1);
+    }
+    public function test_user_can_enable_two_factor_with_valid_code(): void
+    {
+        $user = $this->user('medico');
+
+        $this->actingAs($user)->get('/seguridad/2fa')->assertOk();
+
+        $secret = $user->fresh()->two_factor_secret;
+        $this->assertNotNull($secret);
+
+        $code = app(TwoFactor::class)->currentCode($secret);
+
+        $this->actingAs($user)->post('/seguridad/2fa/confirmar', ['code' => $code])
+            ->assertRedirect(route('two-factor.show'))
+            ->assertSessionHas('recovery_codes');
+
+        $this->assertTrue($user->fresh()->hasTwoFactorEnabled());
+        $this->assertCount(8, $user->fresh()->two_factor_recovery_codes);
+    }
+
+    public function test_two_factor_rejects_invalid_code(): void
+    {
+        $user = $this->user('medico');
+
+        $this->actingAs($user)->get('/seguridad/2fa');
+        $this->actingAs($user)->post('/seguridad/2fa/confirmar', ['code' => '000000'])
+            ->assertSessionHasErrors('code');
+
+        $this->assertFalse($user->fresh()->hasTwoFactorEnabled());
+    }
+
+    public function test_two_factor_secret_is_encrypted_in_database(): void
+    {
+        $user = $this->user('medico');
+
+        $this->actingAs($user)->get('/seguridad/2fa');
+
+        $raw = \DB::table('users')->where('id', $user->id)->value('two_factor_secret');
+        $plain = $user->fresh()->two_factor_secret;
+
+        $this->assertNotSame($plain, $raw);
     }
 }

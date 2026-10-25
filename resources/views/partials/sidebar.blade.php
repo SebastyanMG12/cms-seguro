@@ -29,6 +29,11 @@
         </a>
     @endcan
 
+    <a href="{{ route('two-factor.show') }}"
+        class="list-group-item list-group-item-action {{ request()->routeIs('two-factor.*') ? 'active' : '' }}">
+        Verificación en dos pasos
+    </a>
+
     <span class="list-group-item text-muted">Páginas <small>(próximamente)</small></span>
     <span class="list-group-item text-muted">Servicios <small>(próximamente)</small></span>
     <span class="list-group-item text-muted">Galería <small>(próximamente)</small></span>

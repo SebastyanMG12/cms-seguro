@@ -10,6 +10,7 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReceivedEmailController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Security\TwoFactorController;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -42,6 +43,13 @@ Route::middleware('guest')->group(function () {
 
 // Solo usuarios autenticados y activos
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::get('/seguridad/2fa', [TwoFactorController::class, 'show'])
+        ->name('two-factor.show');
+
+    Route::post('/seguridad/2fa/confirmar', [TwoFactorController::class, 'confirm'])
+        ->middleware('throttle:10,1')
+        ->name('two-factor.confirm');
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
