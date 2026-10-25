@@ -18,7 +18,7 @@
         {{-- Aviso Permanente Obligatorio (Regla Sección 328) --}}
         <div class="alert alert-warning border-warning shadow-sm mb-4" role="alert">
             <div class="d-flex align-items-center">
-                <div class="fs-2 me-3">⚠️</div>
+                <i class="bi bi-exclamation-triangle text-dark fs-2 me-3" aria-hidden="true"></i>
                 <div>
                     <h5 class="alert-heading fw-bold mb-1">Aviso Importante sobre la Atención de Urgencias</h5>
                     <p class="mb-1">
@@ -34,9 +34,9 @@
         {{-- Banner Dinámico de Signos de Alarma --}}
         <div id="alarmSignsAlertBanner" class="alert alert-danger border-danger shadow-sm mb-4 d-none" role="alert">
             <div class="d-flex align-items-center">
-                <div class="fs-1 me-3">🚨</div>
+                <i class="bi bi-exclamation-octagon text-danger fs-2 me-3" aria-hidden="true"></i>
                 <div>
-                    <h5 class="alert-heading fw-bold text-danger mb-1">¡ATENCIÓN INMEDIATA REQUERIDA!</h5>
+                    <h5 class="alert-heading fw-bold text-danger mb-1">ATENCIÓN INMEDIATA REQUERIDA</h5>
                     <p class="mb-1 fw-semibold">
                         Ha marcado uno o más signos de alarma críticos. NO espere en casa ni posponga la atención.
                     </p>
@@ -264,7 +264,7 @@
                 </div>
                 <div class="card-body p-4">
                     <div id="minorNotice" class="alert alert-info py-2 mb-3 d-none">
-                        ℹ️ <strong>Paciente menor de edad:</strong> Los datos del acompañante o representante legal son obligatorios por disposición legal.
+                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i> <strong>Paciente menor de edad:</strong> Los datos del acompañante o representante legal son obligatorios por disposición legal.
                     </div>
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -334,8 +334,8 @@
 
             {{-- Botón de Envío --}}
             <div class="d-grid gap-2 mb-5">
-                <button type="submit" class="btn btn-primary btn-lg shadow fw-bold py-3">
-                    🏥 Enviar Pre-registro de Urgencia
+                <button type="submit" class="btn btn-primary btn-lg shadow-sm fw-bold py-3">
+                    <i class="bi bi-send me-2" aria-hidden="true"></i> Enviar Pre-registro de Urgencia
                 </button>
                 <div class="text-center text-muted small mt-2">
                     Sus datos viajan protegidos bajo cifrado de alto nivel y estrictos protocolos de confidencialidad médica.
