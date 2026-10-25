@@ -11,9 +11,7 @@ use Illuminate\Http\Response;
 
 class TwoFactorController extends Controller
 {
-    public function __construct(private TwoFactor $twoFactor)
-    {
-    }
+    public function __construct(private TwoFactor $twoFactor) {}
 
     public function show(Request $request): Response
     {

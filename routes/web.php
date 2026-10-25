@@ -10,6 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReceivedEmailController;
+use App\Http\Controllers\Security\PasswordController;
 use App\Http\Controllers\Security\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
@@ -70,7 +71,28 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
 
     Route::get('/auditoria', [AuditLogController::class, 'index'])->name('audit.index');
 
+    Route::get('/seguridad/password', [PasswordController::class, 'edit'])->name('security.password.edit');
+    Route::put('/seguridad/password', [PasswordController::class, 'update'])->name('security.password.update');
+
     Route::get('/admin/usuarios', [UserController::class, 'index'])->name('admin.users.index');
     Route::get('/admin/usuarios/crear', [UserController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/usuarios', [UserController::class, 'store'])->name('admin.users.store');
+    Route::get('/admin/usuarios/{user}/editar', [UserController::class, 'edit'])
+        ->whereNumber('user')
+        ->name('admin.users.edit');
+    Route::put('/admin/usuarios/{user}', [UserController::class, 'update'])
+        ->whereNumber('user')
+        ->name('admin.users.update');
+    Route::post('/admin/usuarios/{user}/suspender', [UserController::class, 'suspend'])
+        ->whereNumber('user')
+        ->name('admin.users.suspend');
+    Route::post('/admin/usuarios/{user}/reactivar', [UserController::class, 'reactivate'])
+        ->whereNumber('user')
+        ->name('admin.users.reactivate');
+    Route::post('/admin/usuarios/{user}/restablecer-2fa', [UserController::class, 'resetTwoFactor'])
+        ->whereNumber('user')
+        ->name('admin.users.reset-2fa');
+    Route::delete('/admin/usuarios/{user}', [UserController::class, 'destroy'])
+        ->whereNumber('user')
+        ->name('admin.users.destroy');
 });

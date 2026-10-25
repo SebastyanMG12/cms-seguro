@@ -52,13 +52,4 @@
             </div>
         </div>
     </div>
-
-    <script>
-        document.getElementById('togglePassword').addEventListener('click', function () {
-            const input = document.getElementById('password');
-            const oculto = input.type === 'password';
-            input.type = oculto ? 'text' : 'password';
-            this.textContent = oculto ? 'Ocultar' : 'Mostrar';
-        });
-    </script>
 @endsection

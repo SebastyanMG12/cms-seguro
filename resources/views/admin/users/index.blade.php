@@ -13,6 +13,7 @@
                     <th>Correo</th>
                     <th>Rol</th>
                     <th>Estado</th>
+                    <th class="text-end">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -25,7 +26,16 @@
                                 <span class="badge bg-secondary">{{ $r->name }}</span>
                             @endforeach
                         </td>
-                        <td>{{ $u->status }}</td>
+                        <td>
+                            @if ($u->status === 'active')
+                                <span class="badge bg-success">Activo</span>
+                            @else
+                                <span class="badge bg-danger">Suspendido</span>
+                            @endif
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ route('admin.users.edit', $u) }}" class="btn btn-sm btn-outline-primary">Editar</a>
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

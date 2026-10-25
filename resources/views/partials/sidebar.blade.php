@@ -34,6 +34,11 @@
         Verificación en dos pasos
     </a>
 
+    <a href="{{ route('security.password.edit') }}"
+        class="list-group-item list-group-item-action {{ request()->routeIs('security.password.*') ? 'active' : '' }}">
+        Cambiar contraseña
+    </a>
+
     <span class="list-group-item text-muted">Páginas <small>(próximamente)</small></span>
     <span class="list-group-item text-muted">Servicios <small>(próximamente)</small></span>
     <span class="list-group-item text-muted">Galería <small>(próximamente)</small></span>

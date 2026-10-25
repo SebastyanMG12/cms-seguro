@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Audit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
-use App\Services\Audit;
-use App\Models\User;
 
 class LoginController extends Controller
 {
@@ -26,7 +26,7 @@ class LoginController extends Controller
 
         $credentials['status'] = 'active';
 
-        if (!Auth::validate($credentials)) {
+        if (! Auth::validate($credentials)) {
             Audit::log('login_failed', null, ['email' => strtolower($request->input('email'))]);
 
             return back()

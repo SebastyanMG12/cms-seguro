@@ -142,9 +142,16 @@ class SecurityTest extends TestCase
 
     public function test_security_headers_are_present(): void
     {
-        $this->get('/')
-            ->assertHeader('X-Frame-Options', 'DENY')
-            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response = $this->get('/');
+        $response->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Content-Security-Policy');
+
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+        $this->assertStringContainsString("default-src 'self'", $csp);
+
+        preg_match('/script-src\s+([^;]+)/', $csp, $matches);
+        $this->assertStringNotContainsString("'unsafe-inline'", $matches[1] ?? '');
     }
 
     public function test_password_reset_deletes_existing_sessions(): void
@@ -353,5 +360,280 @@ class SecurityTest extends TestCase
         $this->post('/login', ['email' => $user->email, 'password' => 'Clave#Segura2026']);
         $this->post('/login/2fa', ['recovery_code' => $codes['plain'][0]])->assertSessionHasErrors('code');
         $this->assertGuest();
+    }
+
+    public function test_admin_can_update_user_and_roles(): void
+    {
+        $admin = $this->user('administrador');
+        $target = $this->user('autor');
+
+        $payload = [
+            'name' => 'Target Modificado',
+            'email' => 'target.mod@x.test',
+            'roles' => ['editor', 'autor'],
+        ];
+
+        $this->actingAs($admin)
+            ->put("/admin/usuarios/{$target->id}", $payload)
+            ->assertRedirect(route('admin.users.index'));
+
+        $target->refresh();
+        $this->assertSame('Target Modificado', $target->name);
+        $this->assertSame('target.mod@x.test', $target->email);
+        $this->assertTrue($target->hasAllRoles(['editor', 'autor']));
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'user_updated',
+            'model_type' => 'User',
+            'model_id' => $target->id,
+        ]);
+    }
+
+    public function test_user_cannot_update_own_roles(): void
+    {
+        $admin = $this->user('administrador');
+
+        $payload = [
+            'name' => $admin->name,
+            'email' => $admin->email,
+            'roles' => ['autor'],
+        ];
+
+        $this->actingAs($admin)
+            ->put("/admin/usuarios/{$admin->id}", $payload)
+            ->assertSessionHasErrors('roles');
+
+        $admin->refresh();
+        $this->assertTrue($admin->hasRole('administrador'));
+    }
+
+    public function test_cannot_remove_role_from_last_active_admin(): void
+    {
+        $admin = $this->user('administrador');
+        $otherAdmin = $this->user('administrador');
+
+        // Segundo admin gestiona al primero pero intenta quitarle el rol admin dejando sólo 1
+        // Primero suspendemos al segundo admin para que quede sólo 1 admin activo
+        $otherAdmin->forceFill(['status' => 'suspended'])->save();
+
+        // Le damos permiso usuarios.gestionar a un usuario autor para que intente editar al único admin activo
+        $manager = $this->user('autor');
+        $manager->givePermissionTo('usuarios.gestionar');
+
+        $this->actingAs($manager)
+            ->put("/admin/usuarios/{$admin->id}", [
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'roles' => ['autor'],
+            ])
+            ->assertSessionHasErrors('roles');
+
+        $admin->refresh();
+        $this->assertTrue($admin->hasRole('administrador'));
+    }
+
+    public function test_admin_can_suspend_and_reactivate_user_with_reason(): void
+    {
+        $admin = $this->user('administrador');
+        $target = $this->user('autor');
+
+        DB::table('sessions')->insert([
+            'id' => 'sesion-target-activo',
+            'user_id' => $target->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+            'payload' => 'dummy',
+            'last_activity' => time(),
+        ]);
+
+        $this->actingAs($admin)
+            ->post("/admin/usuarios/{$target->id}/suspender", [
+                'reason' => 'Incumplimiento de normas internas del hospital',
+            ])
+            ->assertRedirect();
+
+        $target->refresh();
+        $this->assertSame('suspended', $target->status);
+        $this->assertDatabaseMissing('sessions', ['id' => 'sesion-target-activo']);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'user_suspended',
+            'model_id' => $target->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->post("/admin/usuarios/{$target->id}/reactivar", [
+                'reason' => 'Levantamiento de suspensión tras revisión',
+            ])
+            ->assertRedirect();
+
+        $target->refresh();
+        $this->assertSame('active', $target->status);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'user_reactivated',
+            'model_id' => $target->id,
+        ]);
+    }
+
+    public function test_user_cannot_suspend_self(): void
+    {
+        $admin = $this->user('administrador');
+
+        $this->actingAs($admin)
+            ->post("/admin/usuarios/{$admin->id}/suspender", [
+                'reason' => 'Intento de auto suspensión',
+            ])
+            ->assertForbidden();
+
+        $admin->refresh();
+        $this->assertSame('active', $admin->status);
+    }
+
+    public function test_cannot_suspend_last_active_admin(): void
+    {
+        $admin = $this->user('administrador');
+
+        $manager = $this->user('autor');
+        $manager->givePermissionTo('usuarios.gestionar');
+
+        $this->actingAs($manager)
+            ->post("/admin/usuarios/{$admin->id}/suspender", [
+                'reason' => 'Intento de suspender al único admin',
+            ])
+            ->assertSessionHasErrors('user');
+
+        $admin->refresh();
+        $this->assertSame('active', $admin->status);
+    }
+
+    public function test_admin_can_reset_two_factor_with_reason(): void
+    {
+        $admin = $this->user('administrador');
+        $target = $this->user('medico', 'active', true);
+
+        $this->assertTrue($target->hasTwoFactorEnabled());
+
+        $this->actingAs($admin)
+            ->post("/admin/usuarios/{$target->id}/restablecer-2fa", [
+                'reason' => 'Médico perdió su teléfono y requiere reconfiguración',
+            ])
+            ->assertRedirect();
+
+        $target->refresh();
+        $this->assertFalse($target->hasTwoFactorEnabled());
+        $this->assertNull($target->two_factor_secret);
+        $this->assertNull($target->two_factor_last_timestep);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'two_factor_reset',
+            'model_id' => $target->id,
+        ]);
+    }
+
+    public function test_admin_can_soft_delete_user(): void
+    {
+        $admin = $this->user('administrador');
+        $target = $this->user('autor');
+
+        DB::table('sessions')->insert([
+            'id' => 'sesion-target-delete',
+            'user_id' => $target->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+            'payload' => 'dummy',
+            'last_activity' => time(),
+        ]);
+
+        $this->actingAs($admin)
+            ->delete("/admin/usuarios/{$target->id}")
+            ->assertRedirect(route('admin.users.index'));
+
+        $this->assertNull(User::find($target->id));
+        $this->assertNotNull(User::withTrashed()->find($target->id)?->deleted_at);
+        $this->assertDatabaseMissing('sessions', ['id' => 'sesion-target-delete']);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'user_deleted',
+            'model_id' => $target->id,
+        ]);
+    }
+
+    public function test_user_cannot_delete_self(): void
+    {
+        $admin = $this->user('administrador');
+
+        $this->actingAs($admin)
+            ->delete("/admin/usuarios/{$admin->id}")
+            ->assertForbidden();
+
+        $this->assertNotNull(User::find($admin->id));
+    }
+
+    public function test_cannot_delete_last_active_admin(): void
+    {
+        $admin = $this->user('administrador');
+
+        $manager = $this->user('autor');
+        $manager->givePermissionTo('usuarios.gestionar');
+
+        $this->actingAs($manager)
+            ->delete("/admin/usuarios/{$admin->id}")
+            ->assertSessionHasErrors('user');
+
+        $this->assertNotNull(User::find($admin->id));
+    }
+
+    public function test_authenticated_user_can_change_password_and_close_other_sessions(): void
+    {
+        $user = $this->user('medico');
+        $user->forceFill(['password' => Hash::make('Clave#Inicial2026')])->save();
+
+        // Creamos una sesión "otra" en la base de datos
+        DB::table('sessions')->insert([
+            'id' => 'otra-sesion-remota',
+            'user_id' => $user->id,
+            'ip_address' => '192.168.1.100',
+            'user_agent' => 'OtherBrowser',
+            'payload' => 'dummy',
+            'last_activity' => time(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->put('/seguridad/password', [
+                'current_password' => 'Clave#Inicial2026',
+                'password' => 'Nueva#Clave2026!A',
+                'password_confirmation' => 'Nueva#Clave2026!A',
+            ]);
+
+        $response->assertRedirect()->assertSessionHas('success');
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('Nueva#Clave2026!A', $user->password));
+
+        // La sesión remota fue eliminada
+        $this->assertDatabaseMissing('sessions', ['id' => 'otra-sesion-remota']);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'password_changed',
+            'model_id' => $user->id,
+        ]);
+    }
+
+    public function test_change_password_rejects_invalid_current_password(): void
+    {
+        $user = $this->user('medico');
+        $user->forceFill(['password' => Hash::make('Clave#Inicial2026')])->save();
+
+        $this->actingAs($user)
+            ->put('/seguridad/password', [
+                'current_password' => 'Clave#Incorrecta123',
+                'password' => 'Nueva#Clave2026!A',
+                'password_confirmation' => 'Nueva#Clave2026!A',
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('Clave#Inicial2026', $user->password));
     }
 }
