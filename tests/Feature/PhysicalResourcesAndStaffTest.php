@@ -300,4 +300,90 @@ class PhysicalResourcesAndStaffTest extends TestCase
         $staffService->updateStatus($profile, StaffProfile::STATUS_EN_DESCANSO);
         $this->assertDatabaseHas('audit_logs', ['event' => 'staff_status_changed']);
     }
+
+    public function test_staff_index_renders_successfully_with_shifts_and_metrics(): void
+    {
+        $admin = $this->user('administrador');
+        $medico = $this->user('medico');
+        app(StaffService::class)->createProfile($medico, 'Urgenciólogo');
+
+        $response = $this->actingAs($admin)->get('/personal');
+
+        $response->assertOk();
+        $response->assertViewHas(['staff', 'shifts', 'availableUsers', 'totalStaff', 'activeShiftsCount']);
+        $response->assertSee('Plantilla de Profesionales Clínicos');
+        $response->assertSee('Programación de Turnos Clínicos');
+    }
+
+    public function test_admin_can_create_medical_staff_with_user_and_profile_directly(): void
+    {
+        $admin = $this->user('administrador');
+
+        $response = $this->actingAs($admin)->post('/personal/crear-usuario', [
+            'name' => 'Dr. Fernando Ruiz',
+            'email' => 'fernando.ruiz@hospital.gov.co',
+            'password' => 'SecurePass123*',
+            'roles' => ['medico'],
+            'specialty' => 'Urgenciólogo',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('users', [
+            'email' => 'fernando.ruiz@hospital.gov.co',
+        ]);
+        $user = User::where('email', 'fernando.ruiz@hospital.gov.co')->first();
+        $this->assertTrue($user->hasRole('medico'));
+        $this->assertNotNull($user->staffProfile);
+        $this->assertSame('Urgenciólogo', $user->staffProfile->specialty);
+        $this->assertStringStartsWith('MED-', $user->staffProfile->code);
+    }
+
+    public function test_admin_can_edit_medical_staff_profile_and_user_details(): void
+    {
+        $admin = $this->user('administrador');
+        $medico = $this->user('medico');
+        $profile = app(StaffService::class)->createProfile($medico, 'Médico General');
+
+        $editView = $this->actingAs($admin)->get("/personal/{$profile->id}/editar");
+        $editView->assertOk();
+        $editView->assertSee('Editar Profesional Clínico');
+
+        $updateResponse = $this->actingAs($admin)->put("/personal/{$profile->id}", [
+            'name' => 'Dr. Médico Modificado',
+            'email' => $medico->email,
+            'specialty' => 'Especialista en Urgencias',
+            'status' => 'en_descanso',
+            'roles' => ['medico', 'coordinador'],
+        ]);
+
+        $updateResponse->assertRedirect(route('staff.index'));
+        $this->assertSame('Dr. Médico Modificado', $medico->fresh()->name);
+        $this->assertSame('Especialista en Urgencias', $profile->fresh()->specialty);
+        $this->assertSame('en_descanso', $profile->fresh()->status);
+        $this->assertTrue($medico->fresh()->hasRole('coordinador'));
+    }
+
+    public function test_shift_store_via_http_and_start(): void
+    {
+        $admin = $this->user('administrador');
+        $medico = $this->user('medico');
+        app(StaffService::class)->createProfile($medico, 'Cirujano');
+
+        $storeResponse = $this->actingAs($admin)->post('/turnos', [
+            'user_id' => $medico->id,
+            'type' => 'rotativo',
+            'starts_at' => now()->format('Y-m-d H:i:s'),
+            'ends_at' => now()->addHours(8)->format('Y-m-d H:i:s'),
+        ]);
+
+        $storeResponse->assertRedirect();
+        $shift = Shift::where('user_id', $medico->id)->first();
+        $this->assertNotNull($shift);
+        $this->assertSame('programado', $shift->status);
+        $this->assertSame('rotativo', $shift->type);
+
+        $startResponse = $this->actingAs($admin)->post("/turnos/{$shift->id}/iniciar");
+        $startResponse->assertRedirect();
+        $this->assertSame('activo', $shift->fresh()->status);
+    }
 }

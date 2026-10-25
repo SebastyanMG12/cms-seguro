@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Hospital;
 use App\Http\Controllers\Controller;
 use App\Models\Shift;
 use App\Models\User;
+use App\Services\ClinicalService;
 use App\Services\StaffService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Illuminate\Validation\Rule;
 
 class ShiftController extends Controller
 {
-    public function __construct(private StaffService $staffService) {}
+    public function __construct(
+        private StaffService $staffService,
+        private ClinicalService $clinicalService
+    ) {}
 
     public function store(Request $request): RedirectResponse
     {
@@ -23,7 +27,7 @@ class ShiftController extends Controller
             'user_id' => ['required', 'integer', Rule::exists('users', 'id')],
             'starts_at' => ['required', 'date'],
             'ends_at' => ['required', 'date', 'after:starts_at'],
-            'type' => ['required', 'string', Rule::in(['diurno', 'nocturno', 'guardia'])],
+            'type' => ['required', 'string', Rule::in(['diurno', 'nocturno', 'rotativo', 'disponibilidad', 'guardia'])],
         ]);
 
         $user = User::findOrFail($data['user_id']);
@@ -45,7 +49,8 @@ class ShiftController extends Controller
     {
         Gate::authorize('turnos.gestionar');
 
-        $this->staffService->endShift($shift, 0);
+        $activeEpisodesCount = $this->clinicalService->countActivePatients($shift->user);
+        $this->staffService->endShift($shift, $activeEpisodesCount);
 
         return back()->with('success', 'Turno finalizado con éxito.');
     }

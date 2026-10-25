@@ -129,6 +129,13 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     // Personal asistencial y turnos
     Route::get('/personal', [StaffController::class, 'index'])->name('staff.index');
     Route::post('/personal', [StaffController::class, 'store'])->name('staff.store');
+    Route::post('/personal/crear-usuario', [StaffController::class, 'storeWithUser'])->name('staff.store-user');
+    Route::get('/personal/{profile}/editar', [StaffController::class, 'edit'])
+        ->whereNumber('profile')
+        ->name('staff.edit');
+    Route::put('/personal/{profile}', [StaffController::class, 'update'])
+        ->whereNumber('profile')
+        ->name('staff.update');
     Route::post('/personal/{profile}/estado', [StaffController::class, 'updateStatus'])
         ->whereNumber('profile')
         ->name('staff.update-status');

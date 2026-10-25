@@ -6,6 +6,7 @@ use App\Models\Shift;
 use App\Models\StaffProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -40,6 +41,65 @@ class StaffService
             ]);
 
             Audit::log('staff_profile_created', $profile, ['code' => $code]);
+
+            return $profile;
+        });
+    }
+
+    public function createStaffWithUser(array $data, ?User $actor = null): StaffProfile
+    {
+        return DB::transaction(function () use ($data, $actor): StaffProfile {
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'status' => 'active',
+            ]);
+
+            $roles = $data['roles'] ?? ['medico'];
+            $user->syncRoles($roles);
+
+            Audit::log('user_created', $user, ['roles' => $roles], $actor?->id);
+
+            return $this->createProfile($user, $data['specialty']);
+        });
+    }
+
+    public function updateProfile(StaffProfile $profile, array $data, ?User $actor = null): StaffProfile
+    {
+        return DB::transaction(function () use ($profile, $data, $actor): StaffProfile {
+            $oldSpecialty = $profile->specialty;
+            $oldStatus = $profile->status;
+
+            if (isset($data['specialty'])) {
+                $profile->specialty = $data['specialty'];
+            }
+
+            if (isset($data['status'])) {
+                $profile->status = $data['status'];
+            }
+
+            $profile->save();
+
+            if ($profile->user) {
+                if (! empty($data['name'])) {
+                    $profile->user->name = $data['name'];
+                }
+                if (! empty($data['email'])) {
+                    $profile->user->email = $data['email'];
+                }
+                if (isset($data['roles']) && is_array($data['roles'])) {
+                    $profile->user->syncRoles($data['roles']);
+                }
+                $profile->user->save();
+            }
+
+            Audit::log('staff_profile_updated', $profile, [
+                'old_specialty' => $oldSpecialty,
+                'new_specialty' => $profile->specialty,
+                'old_status' => $oldStatus,
+                'new_status' => $profile->status,
+            ], $actor?->id);
 
             return $profile;
         });
