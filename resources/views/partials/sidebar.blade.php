@@ -34,6 +34,20 @@
         Verificación en dos pasos
     </a>
 
+    @can('ocupacion.ver')
+        <a href="{{ route('occupancy.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('occupancy.*') ? 'active' : '' }}">
+            Censo y Ocupación
+        </a>
+    @endcan
+
+    @can('personal.gestionar')
+        <a href="{{ route('staff.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('staff.*') ? 'active' : '' }}">
+            Personal y Turnos
+        </a>
+    @endcan
+
     <a href="{{ route('security.password.edit') }}"
         class="list-group-item list-group-item-action {{ request()->routeIs('security.password.*') ? 'active' : '' }}">
         Cambiar contraseña

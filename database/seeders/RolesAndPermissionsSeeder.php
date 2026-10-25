@@ -17,6 +17,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'usuarios.gestionar',
             'auditoria.ver',
             'correos.ver',
+            'sedes.gestionar',
+            'habitaciones.gestionar',
+            'camillas.gestionar',
+            'personal.gestionar',
+            'turnos.gestionar',
+            'ocupacion.ver',
         ];
 
         foreach ($permissions as $name) {
@@ -24,14 +30,39 @@ class RolesAndPermissionsSeeder extends Seeder
         }
 
         $roles = [
-            'administrador' => ['usuarios.gestionar', 'correos.ver'],
-            'auditor' => ['auditoria.ver'],
-            'coordinador' => ['correos.ver'],
-            'editor' => ['correos.ver'],
+            'administrador' => [
+                'usuarios.gestionar',
+                'correos.ver',
+                'sedes.gestionar',
+                'habitaciones.gestionar',
+                'camillas.gestionar',
+                'personal.gestionar',
+                'turnos.gestionar',
+                'ocupacion.ver',
+            ],
+            'coordinador' => [
+                'correos.ver',
+                'camillas.gestionar',
+                'personal.gestionar',
+                'turnos.gestionar',
+                'ocupacion.ver',
+            ],
+            'auditor' => [
+                'auditoria.ver',
+            ],
+            'medico' => [
+                'ocupacion.ver',
+            ],
+            'enfermero' => [
+                'ocupacion.ver',
+            ],
+            'admisiones' => [
+                'ocupacion.ver',
+            ],
+            'editor' => [
+                'correos.ver',
+            ],
             'autor' => [],
-            'medico' => [],
-            'enfermero' => [],
-            'admisiones' => [],
         ];
 
         foreach ($roles as $roleName => $rolePermissions) {

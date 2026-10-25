@@ -7,6 +7,10 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Hospital\OccupancyController;
+use App\Http\Controllers\Hospital\PhysicalResourceController;
+use App\Http\Controllers\Hospital\ShiftController;
+use App\Http\Controllers\Hospital\StaffController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ReceivedEmailController;
@@ -95,4 +99,39 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::delete('/admin/usuarios/{user}', [UserController::class, 'destroy'])
         ->whereNumber('user')
         ->name('admin.users.destroy');
+
+    // Ocupación y censo hospitalario
+    Route::get('/ocupacion', [OccupancyController::class, 'index'])->name('occupancy.index');
+
+    // Recursos físicos (camillas y habitaciones)
+    Route::post('/habitaciones/{room}/camillas', [PhysicalResourceController::class, 'storeBed'])
+        ->whereNumber('room')
+        ->name('rooms.beds.store');
+    Route::post('/habitaciones/{room}/estado', [PhysicalResourceController::class, 'updateRoomStatus'])
+        ->whereNumber('room')
+        ->name('rooms.update-status');
+    Route::post('/camillas/{bed}/estado', [PhysicalResourceController::class, 'updateBedStatus'])
+        ->whereNumber('bed')
+        ->name('beds.update-status');
+    Route::post('/camillas/{bed}/liberar', [PhysicalResourceController::class, 'releaseBed'])
+        ->whereNumber('bed')
+        ->name('beds.release');
+
+    // Personal asistencial y turnos
+    Route::get('/personal', [StaffController::class, 'index'])->name('staff.index');
+    Route::post('/personal', [StaffController::class, 'store'])->name('staff.store');
+    Route::post('/personal/{profile}/estado', [StaffController::class, 'updateStatus'])
+        ->whereNumber('profile')
+        ->name('staff.update-status');
+    Route::delete('/personal/{profile}', [StaffController::class, 'destroy'])
+        ->whereNumber('profile')
+        ->name('staff.destroy');
+
+    Route::post('/turnos', [ShiftController::class, 'store'])->name('shifts.store');
+    Route::post('/turnos/{shift}/iniciar', [ShiftController::class, 'start'])
+        ->whereNumber('shift')
+        ->name('shifts.start');
+    Route::post('/turnos/{shift}/finalizar', [ShiftController::class, 'end'])
+        ->whereNumber('shift')
+        ->name('shifts.end');
 });

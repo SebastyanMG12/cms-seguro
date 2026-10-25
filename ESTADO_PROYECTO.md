@@ -5,8 +5,8 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 1. Fase actual
-- **Fase:** Fase 1C: Cierre del acceso y gestión de usuarios (Completada con éxito).
-- **Rama:** `feature/fase-1c-usuarios`
+- **Fase:** Fase 2: Recursos físicos y personal (Completada con éxito).
+- **Rama:** `feature/fase-2-recursos-personal`
 
 ---
 
@@ -41,25 +41,49 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
   - `UserPolicy` para autorizar acciones administrativas.
   - Vistas `admin.users.index`, `admin.users.edit` y `security.password` implementadas.
 
+### Fase 2: Recursos físicos y personal
+- **Jerarquía física hospitalaria**: Sedes (`sites`), Pisos (`floors`), Áreas (`areas`), Habitaciones (`rooms`), Camillas (`beds`) y Asignaciones (`bed_assignments`).
+- **Servicio de dominio `PhysicalResourceService`**:
+  - Códigos de camilla autogenerados (ej: `P1-H101-A`) basados en piso, habitación y letra secuencial.
+  - Capacidad configurable por habitación; validación atómica que impide excederla.
+  - Cálculo de habitación llena (`isFull()`): se computa cuando todas las camillas habilitadas están en estado `ocupada`.
+  - Estados de camilla: `disponible`, `ocupada`, `en_limpieza`, `mantenimiento`, `fuera_de_servicio`, `reservada`.
+  - Regla de disponibilidad transitiva: una camilla sólo es asignable si su estado es `disponible`, su habitación está `disponible` y su área está `activa`.
+  - Regla de protección de pacientes: una habitación o camilla ocupada no puede ponerse fuera de servicio ni en mantenimiento sin reubicar o liberar antes al paciente.
+  - Prevención de doble asignación activa a nivel de base de datos con **índice único parcial PostgreSQL**: `UNIQUE (bed_id) WHERE released_at IS NULL`.
+- **Personal asistencial y turnos (`StaffService`)**:
+  - Códigos de profesional generados, únicos y no secuenciales (ej: `MED-8F3A2B`, `ENF-A1B2C3`).
+  - Estado de personal: `activo`, `inactivo`, `en_descanso`. El personal en descanso o inactivo **no es asignable**.
+  - Borrado lógico (`SoftDeletes`) para preservar trazabilidad de atenciones históricas.
+  - Ciclo de turnos: `programado` -> `activo` -> `finalizado`. Validación que impide cerrar turno si el profesional tiene pacientes asignados pendientes de reasignación.
+- **Matriz de roles y permisos**:
+  - Documentada en `docs/roles-permisos.md`. Permisos granulares: `sedes.gestionar`, `habitaciones.gestionar`, `camillas.gestionar`, `personal.gestionar`, `turnos.gestionar`, `ocupacion.ver`.
+  - Asignados en `RolesAndPermissionsSeeder` preservando separación de funciones (Auditor sin permisos de gestión física/usuarios; Coordinador con gestión de camillas y turnos).
+- **Vistas administrativas y de ocupación**:
+  - `occupancy.index`: Tablero del censo hospitalario con métricas consolidadas en tiempo real y desglose jerárquico.
+  - `staff.index`: Gestión de plantilla asistencial y programación de turnos.
+
 ---
 
 ## 3. Decisiones técnicas
-- **PostgreSQL Concurrency Lock**: En `ensureNotLastActiveAdmin`, PostgreSQL no permite `FOR UPDATE` sobre `count(*)`. Se obtienen las filas bloqueadas con `lockForUpdate()->get()` y se cuentan en la colección de Eloquent, garantizando atomicidad sin violar la restricción del motor.
-- **Content-Security-Policy**: Se restringe `script-src` exclusivamente a `'self'` (más los hosts de desarrollo Vite en entorno `local`), prohibiendo tajantemente `'unsafe-inline'` en scripts ejecutables.
-- **Protección de Sesión**: La suspensión y el cambio de contraseña purgan inmediatamente las filas asociadas en la tabla `sessions` para mitigar secuestro de sesión o permanencia no autorizada.
+- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` antes de asignar o liberar camillas para evitar condiciones de carrera simultáneas.
+- **Partial Unique Index**: El índice `UNIQUE (bed_id) WHERE released_at IS NULL` garantiza matemáticamente a nivel de motor PostgreSQL la imposibilidad de solapar dos asignaciones activas sobre la misma camilla.
+- **Disponibilidad Compuesta**: El método `isAssignable()` valida en cadena el estado de la camilla, el estado de la habitación y el estado del área/servicio, evitando asignar recursos en áreas cerradas o en mantenimiento.
+- **Separación de Funciones Médicas y Administrativas**: Los médicos y enfermeros tienen acceso de lectura al censo (`ocupacion.ver`), mientras que el coordinador y administrador poseen gestión física y de turnos.
 
 ---
 
 ## 4. Pendientes para siguientes fases
-- **Fase 2**: Recursos físicos (sedes, pisos, áreas, habitaciones, camillas) y personal (perfiles, turnos, asignaciones, matriz rol-permiso).
-- **Fase 3**: Formulario público de pre-registro y gestión de consentimientos.
+- **Fase 3**: Formulario público de pre-registro de pacientes, consentimiento de tratamiento de datos Ley 1581, honeypot, anti-enumeración y expiración programada a las 24 horas.
+- **Fase 4**: Módulo médico (llegada, asignación de triage I a V, ingreso, asignación de camilla/médico responsable y apoyos, egreso y entradas clínicas inmutables).
 
 ---
 
 ## 5. Última prueba exitosa
-- **Fecha y hora:** 2026-10-25 15:19:10 -05:00
+- **Fecha y hora:** 2026-10-25 15:49:19 -05:00
 - **Comando ejecutado:** `php artisan test`
-- **Resultado:** 40 pasadas, 0 fallidas (116 aserciones). Tiempo: 18.88s
+- **Resultado:** 50 pasadas, 0 fallidas (159 aserciones). Tiempo: 20.36s
   - `Tests\Unit\ExampleTest`: 1 pasada
   - `Tests\Feature\ExampleTest`: 1 pasada
+  - `Tests\Feature\PhysicalResourcesAndStaffTest`: 10 pasadas
   - `Tests\Feature\SecurityTest`: 38 pasadas
