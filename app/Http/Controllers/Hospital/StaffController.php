@@ -39,7 +39,7 @@ class StaffController extends Controller
 
         // Adjuntar cálculos dinámicos de turno activo y pacientes asignados por profesional
         $staff->each(function (StaffProfile $profile) {
-            $profile->active_assignments = $profile->user->activeEpisodeAssignments;
+            $profile->active_assignments = $profile->user->activeEpisodeAssignments->unique('episode_id');
             $profile->active_patients_count = $profile->active_assignments->count();
             $profile->active_shift = $profile->user->shifts->firstWhere('status', Shift::STATUS_ACTIVO);
         });

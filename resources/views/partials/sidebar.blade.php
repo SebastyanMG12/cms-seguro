@@ -1,37 +1,7 @@
 <div class="list-group shadow-sm">
     <a href="{{ route('dashboard') }}"
         class="list-group-item list-group-item-action {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-        Dashboard
-    </a>
-    <a href="{{ route('posts.index') }}"
-        class="list-group-item list-group-item-action {{ request()->routeIs('posts.*') ? 'active' : '' }}">
-        Publicaciones
-    </a>
-
-    @can('correos.ver')
-        <a href="{{ route('emails.index') }}"
-            class="list-group-item list-group-item-action {{ request()->routeIs('emails.*') ? 'active' : '' }}">
-            Correos recibidos
-        </a>
-    @endcan
-
-    @can('usuarios.gestionar')
-        <a href="{{ route('admin.users.index') }}"
-            class="list-group-item list-group-item-action {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
-            Usuarios
-        </a>
-    @endcan
-
-    @can('auditoria.ver')
-        <a href="{{ route('audit.index') }}"
-            class="list-group-item list-group-item-action {{ request()->routeIs('audit.*') ? 'active' : '' }}">
-            Auditoría
-        </a>
-    @endcan
-
-    <a href="{{ route('two-factor.show') }}"
-        class="list-group-item list-group-item-action {{ request()->routeIs('two-factor.*') ? 'active' : '' }}">
-        Verificación en dos pasos
+        <i class="bi bi-speedometer2 me-1" aria-hidden="true"></i> Panel Principal
     </a>
 
     @can('episodios.ver')
@@ -44,24 +14,52 @@
     @can('ocupacion.ver')
         <a href="{{ route('occupancy.index') }}"
             class="list-group-item list-group-item-action {{ request()->routeIs('occupancy.*') ? 'active' : '' }}">
-            Censo y Ocupación
+            <i class="bi bi-door-closed me-1" aria-hidden="true"></i> Censo y Ocupación
         </a>
     @endcan
 
     @can('personal.gestionar')
         <a href="{{ route('staff.index') }}"
             class="list-group-item list-group-item-action {{ request()->routeIs('staff.*') ? 'active' : '' }}">
-            Personal y Turnos
+            <i class="bi bi-people me-1" aria-hidden="true"></i> Personal y Turnos
         </a>
     @endcan
 
-    <a href="{{ route('security.password.edit') }}"
-        class="list-group-item list-group-item-action {{ request()->routeIs('security.password.*') ? 'active' : '' }}">
-        Cambiar contraseña
+    @can('usuarios.gestionar')
+        <a href="{{ route('admin.users.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+            <i class="bi bi-person-gear me-1" aria-hidden="true"></i> Gestión de Usuarios
+        </a>
+    @endcan
+
+    @can('auditoria.ver')
+        <a href="{{ route('audit.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('audit.*') ? 'active' : '' }}">
+            <i class="bi bi-shield-check me-1" aria-hidden="true"></i> Registro de Auditoría
+        </a>
+    @endcan
+
+    @can('correos.ver')
+        <a href="{{ route('emails.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('emails.*') ? 'active' : '' }}">
+            <i class="bi bi-envelope me-1" aria-hidden="true"></i> Correos Recibidos
+        </a>
+    @endcan
+
+    @hasrole('administrador|autor')
+        <a href="{{ route('posts.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('posts.*') ? 'active' : '' }}">
+            <i class="bi bi-journal-text me-1" aria-hidden="true"></i> Publicaciones
+        </a>
+    @endhasrole
+
+    <a href="{{ route('two-factor.show') }}"
+        class="list-group-item list-group-item-action {{ request()->routeIs('two-factor.*') ? 'active' : '' }}">
+        <i class="bi bi-key me-1" aria-hidden="true"></i> Verificación 2FA
     </a>
 
-    <span class="list-group-item text-muted">Páginas <small>(próximamente)</small></span>
-    <span class="list-group-item text-muted">Servicios <small>(próximamente)</small></span>
-    <span class="list-group-item text-muted">Galería <small>(próximamente)</small></span>
-    <span class="list-group-item text-muted">Configuración <small>(próximamente)</small></span>
+    <a href="{{ route('security.password.edit') }}"
+        class="list-group-item list-group-item-action {{ request()->routeIs('security.password.*') ? 'active' : '' }}">
+        <i class="bi bi-shield-lock me-1" aria-hidden="true"></i> Cambiar Contraseña
+    </a>
 </div>

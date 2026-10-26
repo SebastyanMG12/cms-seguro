@@ -29,9 +29,17 @@
 
 {{-- Pestañas de filtrado de episodios --}}
 <ul class="nav nav-tabs mb-3">
+    @if (auth()->user()->hasAnyRole(['medico', 'enfermero', 'coordinador']) || auth()->user()->staffProfile)
+        <li class="nav-item">
+            <a class="nav-link {{ $tab === 'mis_pacientes' ? 'active fw-bold' : '' }}" href="{{ route('episodes.index', ['tab' => 'mis_pacientes']) }}">
+                <i class="bi bi-person-check me-1" aria-hidden="true"></i> Mis Pacientes
+                <span class="badge bg-primary ms-1 tabular-nums">{{ $counts['mis_pacientes'] }}</span>
+            </a>
+        </li>
+    @endif
     <li class="nav-item">
         <a class="nav-link {{ $tab === 'activos' ? 'active fw-bold' : '' }}" href="{{ route('episodes.index', ['tab' => 'activos']) }}">
-            <i class="bi bi-activity me-1" aria-hidden="true"></i> Pacientes Activos
+            <i class="bi bi-activity me-1" aria-hidden="true"></i> Todos los Activos
             <span class="badge bg-danger ms-1 tabular-nums">{{ $counts['activos'] }}</span>
         </a>
     </li>
@@ -67,7 +75,7 @@
                     <th>Triage</th>
                     <th>Estado</th>
                     <th>Ubicación / Camilla</th>
-                    <th>Médico Responsable</th>
+                    <th>Médico / Asistenciales</th>
                     <th>Llegada / Atención</th>
                     <th class="text-end">Acción</th>
                 </tr>
@@ -171,8 +179,22 @@
                             @if ($ep->responsibleUser)
                                 <span class="small fw-semibold d-block">{{ $ep->responsibleUser->name }}</span>
                                 <small class="text-muted font-monospace tabular-nums">{{ $ep->responsibleUser->staffProfile?->code }}</small>
+                                @if ($ep->responsible_user_id === auth()->id())
+                                    <span class="badge bg-primary-subtle text-primary border border-primary d-inline-block mt-1" style="font-size: 0.68rem;">
+                                        <i class="bi bi-check2 me-1" aria-hidden="true"></i>Médico Responsable
+                                    </span>
+                                @endif
                             @else
                                 <span class="text-muted small">Sin asignar</span>
+                            @endif
+
+                            @php
+                                $mySupport = $ep->activeAssignments->firstWhere('user_id', auth()->id());
+                            @endphp
+                            @if ($mySupport && $ep->responsible_user_id !== auth()->id())
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info d-inline-block mt-1" style="font-size: 0.68rem;">
+                                    <i class="bi bi-person-heart me-1" aria-hidden="true"></i>Tu rol: Apoyo
+                                </span>
                             @endif
                         </td>
                         <td class="small tabular-nums">

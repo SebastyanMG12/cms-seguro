@@ -399,4 +399,85 @@ class MedicalEpisodeTest extends TestCase
         $this->expectException(ValidationException::class);
         app(UserService::class)->suspend($this->doctor, 'Sanción disciplinaria', $admin);
     }
+
+    public function test_cannot_assign_doctor_as_support_if_already_responsible(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+
+        $this->expectException(ValidationException::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'apoyo');
+    }
+
+    public function test_assigning_support_as_responsible_ends_prior_support_assignment(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $assignmentSupport = $clinicalService->assignStaff($this->episode, $this->doctor, 'apoyo');
+        $this->assertNull($assignmentSupport->fresh()->ended_at);
+
+        // Promover al médico a responsable en el mismo episodio
+        $assignmentResp = $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+
+        // La asignación previa como apoyo debe haberse cerrado
+        $this->assertNotNull($assignmentSupport->fresh()->ended_at);
+        $this->assertNull($assignmentResp->fresh()->ended_at);
+        $this->assertSame(1, $clinicalService->countActivePatients($this->doctor));
+    }
+
+    public function test_medical_dashboard_renders_with_assigned_patients_and_metrics(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+
+        // Transicionar a valoración para que sea activo
+        $this->episode->update([
+            'status' => 'en_valoracion',
+            'triage_level' => 'II',
+        ]);
+
+        $response = $this->actingAs($this->doctor)->get('/dashboard');
+        $response->assertStatus(200);
+        $response->assertSee('Mis Pacientes');
+        $response->assertSee('Médico Responsable');
+        $response->assertSee('Nivel II');
+        $response->assertSee($this->episode->public_code);
+        $response->assertDontSee('Noticias');
+        $response->assertDontSee('Imágenes');
+    }
+
+    public function test_episodes_mis_pacientes_tab_filters_only_assigned_patients(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+        $this->episode->update(['status' => 'en_valoracion']);
+
+        // Crear un segundo episodio asignado a la enfermera
+        $secondPatient = Patient::create([
+            'full_name' => 'María Camila Gómez',
+            'document_type' => 'Cédula de ciudadanía',
+            'document_number' => '1025999888',
+            'document_index' => Patient::computeDocumentIndex('Cédula de ciudadanía', '1025999888'),
+            'phone' => '3123334455',
+        ]);
+        $secondEpisode = EmergencyEpisode::create([
+            'patient_id' => $secondPatient->id,
+            'public_code' => 'UBT22222',
+            'status' => 'en_valoracion',
+            'origin' => 'espontaneo',
+            'responsible_user_id' => $this->nurse->id,
+            'reason' => 'Dolor abdominal agudo',
+        ]);
+
+        // Consulta en pestaña mis_pacientes para el médico
+        $response = $this->actingAs($this->doctor)->get(route('episodes.index', ['tab' => 'mis_pacientes']));
+        $response->assertStatus(200);
+        $response->assertSee($this->episode->public_code);
+        $response->assertDontSee('UBT22222');
+
+        // Consulta en pestaña todos los activos muestra ambos
+        $responseActivos = $this->actingAs($this->doctor)->get(route('episodes.index', ['tab' => 'activos']));
+        $responseActivos->assertStatus(200);
+        $responseActivos->assertSee($this->episode->public_code);
+        $responseActivos->assertSee('UBT22222');
+    }
 }

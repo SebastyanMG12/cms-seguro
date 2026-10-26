@@ -150,9 +150,23 @@ class ClinicalService
                     ->whereNull('ended_at')
                     ->update(['ended_at' => $now]);
 
+                // Si este mismo usuario estaba asignado previamente como apoyo, finalizar esa asignación
+                EpisodeAssignment::where('episode_id', $locked->id)
+                    ->where('user_id', $staffUser->id)
+                    ->where('role', 'apoyo')
+                    ->whereNull('ended_at')
+                    ->update(['ended_at' => $now]);
+
                 $locked->responsible_user_id = $staffUser->id;
                 $locked->save();
             } else {
+                // Si el profesional ya es el médico responsable, no puede asignarse simultáneamente como apoyo
+                if ($locked->responsible_user_id === $staffUser->id) {
+                    throw ValidationException::withMessages([
+                        'staff' => "El profesional {$staffUser->name} ya es el médico responsable de este episodio y no puede asignarse simultáneamente como apoyo.",
+                    ]);
+                }
+
                 // Si ya está asignado activamente como apoyo, evitar duplicados
                 $existing = EpisodeAssignment::where('episode_id', $locked->id)
                     ->where('user_id', $staffUser->id)
@@ -225,7 +239,8 @@ class ClinicalService
             ->whereHas('episode', function ($q) {
                 $q->whereNotIn('status', ['egresado', 'expirado']);
             })
-            ->count();
+            ->distinct('episode_id')
+            ->count('episode_id');
     }
 
     /**

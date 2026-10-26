@@ -22,7 +22,12 @@ class MedicalEpisodeController extends Controller
     {
         Gate::authorize('viewAny', EmergencyEpisode::class);
 
-        $tab = $request->query('tab', 'activos');
+        $user = auth()->user();
+        $isMedical = $user->hasAnyRole(['medico', 'enfermero']) || $user->staffProfile !== null;
+        $myActivePatientsCount = $clinicalService->countActivePatients($user);
+
+        $defaultTab = ($isMedical && $myActivePatientsCount > 0 && ! $request->has('tab')) ? 'mis_pacientes' : 'activos';
+        $tab = $request->query('tab', $defaultTab);
         $selectedId = $request->query('selected');
 
         $query = EmergencyEpisode::with([
@@ -33,6 +38,13 @@ class MedicalEpisodeController extends Controller
         ]);
 
         switch ($tab) {
+            case 'mis_pacientes':
+                $query->whereIn('status', ['en_valoracion', 'ingresado'])
+                    ->where(function ($q) use ($user) {
+                        $q->where('responsible_user_id', $user->id)
+                            ->orWhereHas('activeAssignments', fn ($sub) => $sub->where('user_id', $user->id)->whereNull('ended_at'));
+                    });
+                break;
             case 'en_espera':
                 $query->where('status', 'en_espera');
                 break;
@@ -52,14 +64,12 @@ class MedicalEpisodeController extends Controller
 
         // Métricas de cola de urgencias
         $counts = [
-            'preregistrados' => EmergencyEpisode::where('status', 'preregistrado')->count(),
-            'en_espera' => EmergencyEpisode::where('status', 'en_espera')->count(),
+            'mis_pacientes' => $myActivePatientsCount,
             'activos' => EmergencyEpisode::whereIn('status', ['en_valoracion', 'ingresado'])->count(),
+            'en_espera' => EmergencyEpisode::where('status', 'en_espera')->count(),
+            'preregistrados' => EmergencyEpisode::where('status', 'preregistrado')->count(),
             'egresados' => EmergencyEpisode::where('status', 'egresado')->count(),
         ];
-
-        // Contador de pacientes activos asignados al profesional autenticado
-        $myActivePatientsCount = $clinicalService->countActivePatients(auth()->user());
 
         return view('episodes.index', [
             'episodes' => $episodes,
