@@ -145,13 +145,13 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t√
 ---
 
 ## 5. √öltima prueba exitosa
-- **Fecha y hora:** 2026-10-25 19:31:34 -05:00
+- **Fecha y hora:** 2026-10-25 20:04:30 -05:00
 - **Comando ejecutado:** `php artisan test`
-- **Resultado:** 102 pasadas, 0 fallidas (395 aserciones). Tiempo: 58.84s
+- **Resultado:** 104 pasadas, 0 fallidas (405 aserciones). Tiempo: 49.05s
   - `Tests\Unit\ExampleTest`: 1 pasada
   - `Tests\Feature\ExampleTest`: 1 pasada
   - `Tests\Feature\IdentityReconciliationTest`: 13 pasadas
   - `Tests\Feature\MedicalEpisodeTest`: 15 pasadas
-  - `Tests\Feature\PhysicalResourcesAndStaffTest`: 14 pasadas
+  - `Tests\Feature\PhysicalResourcesAndStaffTest`: 16 pasadas
   - `Tests\Feature\PreregistrationTest`: 15 pasadas
   - `Tests\Feature\SecurityTest`: 38 pasadas
