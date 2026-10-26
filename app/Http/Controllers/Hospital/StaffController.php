@@ -29,13 +29,18 @@ class StaffController extends Controller
         $staff = StaffProfile::with([
             'user.roles',
             'user.shifts' => fn ($q) => $q->latest()->limit(5),
+            'user.activeEpisodeAssignments' => fn ($q) => $q->with([
+                'episode.patient',
+                'episode.activeBedAssignment.bed.room',
+            ]),
         ])
             ->orderBy('id', 'desc')
             ->paginate(20);
 
         // Adjuntar cálculos dinámicos de turno activo y pacientes asignados por profesional
         $staff->each(function (StaffProfile $profile) {
-            $profile->active_patients_count = $this->clinicalService->countActivePatients($profile->user);
+            $profile->active_assignments = $profile->user->activeEpisodeAssignments;
+            $profile->active_patients_count = $profile->active_assignments->count();
             $profile->active_shift = $profile->user->shifts->firstWhere('status', Shift::STATUS_ACTIVO);
         });
 

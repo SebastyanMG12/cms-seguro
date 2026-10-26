@@ -158,9 +158,15 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="badge bg-light text-dark border tabular-nums" title="Pacientes activos asignados actualmente">
-                                        <i class="bi bi-person me-1" aria-hidden="true"></i>{{ $p->active_patients_count }}
-                                    </span>
+                                    @if ($p->active_patients_count > 0)
+                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 tabular-nums" data-bs-toggle="modal" data-bs-target="#modalStaffPatients{{ $p->id }}" title="Ver los {{ $p->active_patients_count }} pacientes atendidos por {{ $p->user->name }}">
+                                            <i class="bi bi-people-fill me-1" aria-hidden="true"></i>{{ $p->active_patients_count }} <span class="d-none d-md-inline small">atendiendo</span>
+                                        </button>
+                                    @else
+                                        <span class="badge bg-light text-muted border tabular-nums" title="Sin pacientes activos asignados">
+                                            <i class="bi bi-person me-1" aria-hidden="true"></i>0 asignados
+                                        </span>
+                                    @endif
                                 </td>
                                 <td>
                                     @switch($p->status)
@@ -216,6 +222,133 @@
                                             </button>
                                         </form>
                                     </div>
+
+                                    @if ($p->active_patients_count > 0)
+                                        {{-- Modal de Pacientes Asignados al Profesional --}}
+                                        <div class="modal fade text-start" id="modalStaffPatients{{ $p->id }}" tabindex="-1" aria-labelledby="modalStaffPatientsLabel{{ $p->id }}" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered modal-lg">
+                                                <div class="modal-content">
+                                                    <div class="modal-header py-2 px-3 bg-light">
+                                                        <div>
+                                                            <h3 class="modal-title h6 fw-bold text-dark mb-0" id="modalStaffPatientsLabel{{ $p->id }}">
+                                                                <i class="bi bi-person-lines-fill text-primary me-2" aria-hidden="true"></i>Pacientes a cargo de: {{ $p->user->name }}
+                                                            </h3>
+                                                            <small class="text-muted">
+                                                                Código: <span class="font-monospace fw-semibold">{{ $p->code }}</span> | Especialidad: {{ $p->specialty }} |
+                                                                Turno: {{ $p->active_shift ? ucfirst($p->active_shift->type) . ' (activo)' : 'Sin turno activo' }}
+                                                            </small>
+                                                        </div>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                                    </div>
+                                                    <div class="modal-body p-0">
+                                                        <div class="table-responsive">
+                                                            <table class="table table-hover align-middle mb-0 table-compact small">
+                                                                <thead class="table-light">
+                                                                    <tr>
+                                                                        <th>Episodio</th>
+                                                                        <th>Paciente</th>
+                                                                        <th>Documento</th>
+                                                                        <th>Rol Asistencial</th>
+                                                                        <th>Triage</th>
+                                                                        <th>Estado</th>
+                                                                        <th>Camilla</th>
+                                                                        <th>Desde</th>
+                                                                        <th class="text-end">Historia</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    @foreach ($p->active_assignments as $asg)
+                                                                        @php $ep = $asg->episode; @endphp
+                                                                        <tr>
+                                                                            <td>
+                                                                                <a href="{{ route('episodes.show', $ep) }}" class="fw-bold font-monospace tabular-nums text-decoration-none">
+                                                                                    {{ $ep->public_code }}
+                                                                                </a>
+                                                                                @if ($ep->is_nn)
+                                                                                    <span class="badge bg-danger-subtle text-danger border border-danger d-block font-monospace" style="font-size: 0.65rem;">
+                                                                                        NN: {{ $ep->nn_code }}
+                                                                                    </span>
+                                                                                @endif
+                                                                            </td>
+                                                                            <td>
+                                                                                <strong class="d-block">{{ $ep->patient?->full_name ?? 'Paciente sin identificar' }}</strong>
+                                                                                <small class="text-muted text-truncate d-inline-block" style="max-width: 170px;" title="{{ $ep->reason }}">
+                                                                                    {{ $ep->reason }}
+                                                                                </small>
+                                                                            </td>
+                                                                            <td class="font-monospace tabular-nums">
+                                                                                @if ($ep->patient?->document_number)
+                                                                                    {{ $ep->patient->document_type }}: {{ $ep->patient->document_number }}
+                                                                                @else
+                                                                                    <span class="badge bg-secondary-subtle text-secondary border">Sin doc</span>
+                                                                                @endif
+                                                                            </td>
+                                                                            <td>
+                                                                                @if ($asg->role === 'responsable')
+                                                                                    <span class="badge bg-primary-subtle text-primary border border-primary">
+                                                                                        <i class="bi bi-star-fill me-1" aria-hidden="true"></i>Responsable
+                                                                                    </span>
+                                                                                @else
+                                                                                    <span class="badge bg-info-subtle text-info-emphasis border border-info">
+                                                                                        <i class="bi bi-hand-thumbs-up me-1" aria-hidden="true"></i>Apoyo
+                                                                                    </span>
+                                                                                @endif
+                                                                            </td>
+                                                                            <td>
+                                                                                @if ($ep->triage_level)
+                                                                                    <span class="badge {{ match($ep->triage_level) {
+                                                                                        'I' => 'bg-danger text-white',
+                                                                                        'II' => 'bg-warning text-dark',
+                                                                                        'III' => 'bg-warning-subtle text-warning-emphasis border border-warning',
+                                                                                        'IV' => 'bg-success-subtle text-success border border-success',
+                                                                                        'V' => 'bg-info-subtle text-info-emphasis border border-info',
+                                                                                        default => 'bg-secondary text-white'
+                                                                                    } }} tabular-nums">
+                                                                                        Nivel {{ $ep->triage_level }}
+                                                                                    </span>
+                                                                                @else
+                                                                                    <span class="text-muted">Pendiente</span>
+                                                                                @endif
+                                                                            </td>
+                                                                            <td>
+                                                                                <span class="badge {{ match($ep->status) {
+                                                                                    'en_valoracion' => 'bg-info text-dark',
+                                                                                    'ingresado' => 'bg-primary text-white',
+                                                                                    default => 'bg-secondary text-white'
+                                                                                } }}">
+                                                                                    {{ ucfirst(str_replace('_', ' ', $ep->status)) }}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td>
+                                                                                @if ($ep->activeBedAssignment)
+                                                                                    <span class="badge bg-success-subtle text-success border border-success font-monospace tabular-nums">
+                                                                                        <i class="bi bi-door-closed me-1" aria-hidden="true"></i>{{ $ep->activeBedAssignment->bed->code }}
+                                                                                    </span>
+                                                                                @else
+                                                                                    <span class="text-muted small">Sin camilla</span>
+                                                                                @endif
+                                                                            </td>
+                                                                            <td class="tabular-nums">
+                                                                                {{ $asg->started_at?->format('H:i') ?? 'N/D' }}
+                                                                            </td>
+                                                                            <td class="text-end">
+                                                                                <a href="{{ route('episodes.show', $ep) }}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Abrir historia clínica">
+                                                                                    <i class="bi bi-folder2-open" aria-hidden="true"></i>
+                                                                                </a>
+                                                                            </td>
+                                                                        </tr>
+                                                                    @endforeach
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer py-1 px-3">
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

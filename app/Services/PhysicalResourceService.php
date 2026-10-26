@@ -55,9 +55,10 @@ class PhysicalResourceService
 
     public function updateRoomStatus(Room $room, string $newStatus): Room
     {
-        if ($newStatus === 'fuera_de_servicio' && $room->beds()->where('status', Bed::STATUS_OCUPADA)->exists()) {
+        if (in_array($newStatus, ['fuera_de_servicio', 'mantenimiento'], true) && $room->beds()->where('status', Bed::STATUS_OCUPADA)->exists()) {
+            $statusText = $newStatus === 'mantenimiento' ? 'en mantenimiento' : 'fuera de servicio';
             throw ValidationException::withMessages([
-                'status' => 'No se puede poner fuera de servicio una habitación con pacientes en camilla. Debe reubicarlos primero.',
+                'status' => "No se puede poner {$statusText} la habitación {$room->code} porque tiene pacientes en camilla. Debe reubicarlos primero.",
             ]);
         }
 
@@ -66,13 +67,11 @@ class PhysicalResourceService
             $room->forceFill(['status' => $newStatus])->save();
 
             // Sincronizar camillas según requerimiento:
-            // Cuando se inhabilita una habitación, se inhabilitan sus camillas no ocupadas
+            // Cuando se inhabilita o se pone en mantenimiento una habitación, se sincronizan sus camillas
             if ($newStatus === 'fuera_de_servicio') {
-                $room->beds()->where('status', '!=', Bed::STATUS_OCUPADA)
-                    ->update(['status' => Bed::STATUS_FUERA_DE_SERVICIO]);
+                $room->beds()->update(['status' => Bed::STATUS_FUERA_DE_SERVICIO]);
             } elseif ($newStatus === 'mantenimiento') {
-                $room->beds()->where('status', '!=', Bed::STATUS_OCUPADA)
-                    ->update(['status' => Bed::STATUS_MANTENIMIENTO]);
+                $room->beds()->update(['status' => Bed::STATUS_MANTENIMIENTO]);
             } elseif ($newStatus === 'disponible') {
                 $room->beds()->whereIn('status', [Bed::STATUS_FUERA_DE_SERVICIO, Bed::STATUS_MANTENIMIENTO])
                     ->update(['status' => Bed::STATUS_DISPONIBLE]);

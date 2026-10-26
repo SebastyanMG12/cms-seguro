@@ -475,4 +475,46 @@ class PhysicalResourcesAndStaffTest extends TestCase
         $this->expectException(ValidationException::class);
         $resourceService->deleteBed($bed1);
     }
+
+    public function test_cannot_put_room_into_maintenance_or_fuera_de_servicio_if_bed_is_occupied(): void
+    {
+        $admin = $this->user('administrador');
+        $hierarchy = $this->createHospitalHierarchy();
+        $room = $hierarchy['room'];
+        $resourceService = app(PhysicalResourceService::class);
+        $bed1 = $resourceService->createBed($room);
+        $bed1->update(['status' => Bed::STATUS_OCUPADA]);
+
+        // Intentar poner en mantenimiento debe fallar con error en la sesión
+        $response = $this->actingAs($admin)->post("/habitaciones/{$room->id}/estado", [
+            'status' => 'mantenimiento',
+        ]);
+        $response->assertSessionHasErrors('status');
+        $this->assertSame('disponible', $room->fresh()->status);
+
+        // Intentar poner fuera de servicio también debe fallar
+        $responseFds = $this->actingAs($admin)->post("/habitaciones/{$room->id}/estado", [
+            'status' => 'fuera_de_servicio',
+        ]);
+        $responseFds->assertSessionHasErrors('status');
+        $this->assertSame('disponible', $room->fresh()->status);
+    }
+
+    public function test_putting_room_in_maintenance_cascades_beds_to_mantenimiento(): void
+    {
+        $admin = $this->user('administrador');
+        $hierarchy = $this->createHospitalHierarchy();
+        $room = $hierarchy['room'];
+        $resourceService = app(PhysicalResourceService::class);
+        $bed1 = $resourceService->createBed($room);
+
+        $this->assertSame(Bed::STATUS_DISPONIBLE, $bed1->status);
+
+        $response = $this->actingAs($admin)->post("/habitaciones/{$room->id}/estado", [
+            'status' => 'mantenimiento',
+        ]);
+        $response->assertRedirect();
+        $this->assertSame('mantenimiento', $room->fresh()->status);
+        $this->assertSame(Bed::STATUS_MANTENIMIENTO, $bed1->fresh()->status);
+    }
 }

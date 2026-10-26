@@ -80,4 +80,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(Shift::class);
     }
+
+    public function episodeAssignments(): HasMany
+    {
+        return $this->hasMany(EpisodeAssignment::class);
+    }
+
+    public function activeEpisodeAssignments(): HasMany
+    {
+        return $this->hasMany(EpisodeAssignment::class)
+            ->whereNull('ended_at')
+            ->whereHas('episode', fn ($q) => $q->whereNotIn('status', ['egresado', 'expirado']));
+    }
 }

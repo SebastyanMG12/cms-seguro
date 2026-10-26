@@ -166,7 +166,7 @@
                                                                         </form>
                                                                     </li>
                                                                     <li>
-                                                                        <form method="POST" action="{{ route('rooms.update-status', $room) }}">
+                                                                        <form method="POST" action="{{ route('rooms.update-status', $room) }}" onsubmit="return confirm('¿Poner la habitación {{ $room->code }} en mantenimiento? Sus camillas quedarán en mantenimiento.');">
                                                                             @csrf
                                                                             <input type="hidden" name="status" value="mantenimiento">
                                                                             <button type="submit" class="dropdown-item text-warning">
