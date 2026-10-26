@@ -8,6 +8,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Sin usuarios de prueba por defecto. Crear el admin desde un comando seguro.
+        $this->call([
+            RolesAndPermissionsSeeder::class,
+            HospitalInfrastructureSeeder::class,
+        ]);
     }
 }

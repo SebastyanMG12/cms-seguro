@@ -25,6 +25,7 @@ class ReceiveEmails extends Command
 
             if ($messageId === '' || ! filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
                 $skipped++;
+
                 continue;
             }
 

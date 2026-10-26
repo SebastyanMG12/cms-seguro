@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Services\Audit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
-use App\Services\Audit;
 
 class LoginController extends Controller
 {
@@ -25,17 +26,31 @@ class LoginController extends Controller
 
         $credentials['status'] = 'active';
 
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (! Auth::validate($credentials)) {
             Audit::log('login_failed', null, ['email' => strtolower($request->input('email'))]);
+
             return back()
                 ->withErrors(['email' => 'Las credenciales proporcionadas no son válidas.'])
                 ->onlyInput('email');
         }
 
+        $user = User::where('email', $credentials['email'])->firstOrFail();
+
+        if ($user->hasTwoFactorEnabled()) {
+            $request->session()->regenerate();
+            $request->session()->put('two_factor.user_id', $user->id);
+            $request->session()->put('two_factor.expires_at', now()->addMinutes(5)->timestamp);
+            $request->session()->put('two_factor.remember', $request->boolean('remember'));
+
+            return redirect()->route('two-factor.challenge');
+        }
+
+        Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+
         Audit::log('login');
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->route('dashboard');
     }
 
     public function destroy(Request $request): RedirectResponse

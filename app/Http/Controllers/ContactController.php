@@ -31,7 +31,7 @@ class ContactController extends Controller
             );
         } catch (Throwable $e) {
             // Se registra el error técnico, pero al usuario no se le muestra.
-            Log::error('Fallo al enviar correo de contacto: ' . $e->getMessage());
+            Log::error('Fallo al enviar correo de contacto: '.$e->getMessage());
 
             return back()
                 ->withInput()

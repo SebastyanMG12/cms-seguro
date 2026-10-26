@@ -4,20 +4,53 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Hospital\CompanionManagementController;
+use App\Http\Controllers\Hospital\EmergencyNnController;
+use App\Http\Controllers\Hospital\EmergencyReportController;
+use App\Http\Controllers\Hospital\EpisodePdfController;
+use App\Http\Controllers\Hospital\MedicalEpisodeController;
+use App\Http\Controllers\Hospital\OccupancyController;
+use App\Http\Controllers\Hospital\PhysicalResourceController;
+use App\Http\Controllers\Hospital\PreregistrationController;
+use App\Http\Controllers\Hospital\ShiftController;
+use App\Http\Controllers\Hospital\StaffController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\Public\CompanionTrackingController;
 use App\Http\Controllers\ReceivedEmailController;
+use App\Http\Controllers\Security\PasswordController;
+use App\Http\Controllers\Security\TwoFactorController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\DashboardController;
 
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
 Route::get('/acerca', [PageController::class, 'about'])->name('about');
+Route::get('/documentacion', [PageController::class, 'documentation'])->name('documentation');
+Route::redirect('/docs', '/documentacion');
 Route::get('/contacto', [ContactController::class, 'create'])->name('contact.create');
 Route::post('/contacto', [ContactController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('contact.store');
+
+// Pre-registro público de urgencias (sin cuenta)
+Route::get('/preregistro', [PreregistrationController::class, 'create'])->name('preregistro.create');
+Route::post('/preregistro', [PreregistrationController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('preregistro.store');
+Route::get('/preregistro/exito/{code}', [PreregistrationController::class, 'success'])
+    ->whereAlphaNumeric('code')
+    ->name('preregistro.success');
+
+// Módulo público de consulta y seguimiento del acompañante (Fase 5)
+Route::get('/acompanante', [CompanionTrackingController::class, 'loginForm'])->name('companion.login');
+Route::post('/acompanante', [CompanionTrackingController::class, 'authenticate'])
+    ->middleware('throttle:10,1')
+    ->name('companion.auth');
+Route::get('/acompanante/estado', [CompanionTrackingController::class, 'status'])->name('companion.status');
+Route::post('/acompanante/salir', [CompanionTrackingController::class, 'logout'])->name('companion.logout');
 
 // Solo visitantes (no autenticados)
 // Registro público cerrado: los usuarios los crea un administrador.
@@ -26,6 +59,13 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'store'])
         ->middleware('throttle:login')
         ->name('login.store');
+
+    Route::get('/login/2fa', [TwoFactorChallengeController::class, 'create'])
+        ->name('two-factor.challenge');
+
+    Route::post('/login/2fa', [TwoFactorChallengeController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('two-factor.challenge.store');
 
     Route::get('/recuperar', [PasswordResetController::class, 'requestForm'])->name('password.request');
     Route::post('/recuperar', [PasswordResetController::class, 'sendCode'])
@@ -40,9 +80,17 @@ Route::middleware('guest')->group(function () {
         ->middleware('throttle:5,1')->name('password.update');
 });
 
-// Solo usuarios autenticados y activos
-Route::middleware(['auth', 'active'])->group(function () {
+// Solo usuarios autenticados, activos y sujetos a la verificación 2FA
+Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
+    Route::get('/seguridad/2fa', [TwoFactorController::class, 'show'])
+        ->name('two-factor.show');
+
+    Route::post('/seguridad/2fa/confirmar', [TwoFactorController::class, 'confirm'])
+        ->middleware('throttle:10,1')
+        ->name('two-factor.confirm');
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/admin', fn () => redirect()->route('dashboard'))->name('admin');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::resource('posts', PostController::class);
@@ -54,7 +102,142 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::get('/auditoria', [AuditLogController::class, 'index'])->name('audit.index');
 
+    Route::get('/seguridad/password', [PasswordController::class, 'edit'])->name('security.password.edit');
+    Route::put('/seguridad/password', [PasswordController::class, 'update'])->name('security.password.update');
+
     Route::get('/admin/usuarios', [UserController::class, 'index'])->name('admin.users.index');
     Route::get('/admin/usuarios/crear', [UserController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/usuarios', [UserController::class, 'store'])->name('admin.users.store');
+    Route::get('/admin/usuarios/{user}/editar', [UserController::class, 'edit'])
+        ->whereNumber('user')
+        ->name('admin.users.edit');
+    Route::put('/admin/usuarios/{user}', [UserController::class, 'update'])
+        ->whereNumber('user')
+        ->name('admin.users.update');
+    Route::post('/admin/usuarios/{user}/suspender', [UserController::class, 'suspend'])
+        ->whereNumber('user')
+        ->name('admin.users.suspend');
+    Route::post('/admin/usuarios/{user}/reactivar', [UserController::class, 'reactivate'])
+        ->whereNumber('user')
+        ->name('admin.users.reactivate');
+    Route::post('/admin/usuarios/{user}/restablecer-2fa', [UserController::class, 'resetTwoFactor'])
+        ->whereNumber('user')
+        ->name('admin.users.reset-2fa');
+    Route::post('/admin/usuarios/{user}/restablecer-contrasena', [UserController::class, 'resetPassword'])
+        ->whereNumber('user')
+        ->name('admin.users.reset-password');
+    Route::delete('/admin/usuarios/{user}', [UserController::class, 'destroy'])
+        ->whereNumber('user')
+        ->name('admin.users.destroy');
+
+    // Ocupación y censo hospitalario
+    Route::get('/ocupacion', [OccupancyController::class, 'index'])->name('occupancy.index');
+
+    // Recursos físicos (camillas y habitaciones)
+    Route::post('/habitaciones/{room}/camillas', [PhysicalResourceController::class, 'storeBed'])
+        ->whereNumber('room')
+        ->name('beds.store');
+    Route::post('/habitaciones/{room}/estado', [PhysicalResourceController::class, 'updateRoomStatus'])
+        ->whereNumber('room')
+        ->name('rooms.update-status');
+    Route::put('/habitaciones/{room}', [PhysicalResourceController::class, 'updateRoom'])
+        ->whereNumber('room')
+        ->name('rooms.update');
+    Route::post('/camillas/{bed}/estado', [PhysicalResourceController::class, 'updateBedStatus'])
+        ->whereNumber('bed')
+        ->name('beds.update-status');
+    Route::post('/camillas/{bed}/liberar', [PhysicalResourceController::class, 'releaseBed'])
+        ->whereNumber('bed')
+        ->name('beds.release');
+    Route::delete('/camillas/{bed}', [PhysicalResourceController::class, 'destroyBed'])
+        ->whereNumber('bed')
+        ->name('beds.destroy');
+
+    // Personal asistencial y turnos
+    Route::get('/personal', [StaffController::class, 'index'])->name('staff.index');
+    Route::post('/personal', [StaffController::class, 'store'])->name('staff.store');
+    Route::post('/personal/crear-usuario', [StaffController::class, 'storeWithUser'])->name('staff.store-user');
+    Route::get('/personal/{profile}/editar', [StaffController::class, 'edit'])
+        ->whereNumber('profile')
+        ->name('staff.edit');
+    Route::put('/personal/{profile}', [StaffController::class, 'update'])
+        ->whereNumber('profile')
+        ->name('staff.update');
+    Route::post('/personal/{profile}/estado', [StaffController::class, 'updateStatus'])
+        ->whereNumber('profile')
+        ->name('staff.update-status');
+    Route::delete('/personal/{profile}', [StaffController::class, 'destroy'])
+        ->whereNumber('profile')
+        ->name('staff.destroy');
+
+    Route::post('/turnos', [ShiftController::class, 'store'])->name('shifts.store');
+    Route::post('/turnos/{shift}/iniciar', [ShiftController::class, 'start'])
+        ->whereNumber('shift')
+        ->name('shifts.start');
+    Route::post('/turnos/{shift}/finalizar', [ShiftController::class, 'end'])
+        ->whereNumber('shift')
+        ->name('shifts.end');
+
+    // Módulo médico de urgencias (Fase 4 y Fase 4B)
+    Route::get('/episodios', [MedicalEpisodeController::class, 'index'])->name('episodes.index');
+    Route::get('/episodios/registro-nn', [EmergencyNnController::class, 'create'])->name('episodes.nn.create');
+    Route::post('/episodios/registro-nn', [EmergencyNnController::class, 'store'])->name('episodes.nn.store');
+    Route::get('/episodios/pacientes/buscar', [EmergencyNnController::class, 'searchPatient'])->name('episodes.patient.search');
+    Route::get('/episodios/{episode}/conciliar', [EmergencyNnController::class, 'showReconcileForm'])
+        ->whereUuid('episode')
+        ->name('episodes.reconcile.create');
+    Route::post('/episodios/{episode}/conciliar', [EmergencyNnController::class, 'reconcile'])
+        ->whereUuid('episode')
+        ->name('episodes.reconcile.store');
+    Route::get('/episodios/{episode}', [MedicalEpisodeController::class, 'show'])
+        ->whereUuid('episode')
+        ->name('episodes.show');
+    Route::post('/episodios/{episode}/llegada', [MedicalEpisodeController::class, 'registerArrival'])
+        ->whereUuid('episode')
+        ->name('episodes.arrival');
+    Route::post('/episodios/{episode}/triage', [MedicalEpisodeController::class, 'assignTriage'])
+        ->whereUuid('episode')
+        ->name('episodes.triage');
+    Route::post('/episodios/{episode}/ingreso', [MedicalEpisodeController::class, 'confirmAdmission'])
+        ->whereUuid('episode')
+        ->name('episodes.admission');
+    Route::post('/episodios/{episode}/egreso', [MedicalEpisodeController::class, 'discharge'])
+        ->whereUuid('episode')
+        ->name('episodes.discharge');
+    Route::post('/episodios/{episode}/entradas', [MedicalEpisodeController::class, 'addClinicalEntry'])
+        ->whereUuid('episode')
+        ->name('episodes.entries.store');
+    Route::post('/episodios/{episode}/personal', [MedicalEpisodeController::class, 'assignStaff'])
+        ->whereUuid('episode')
+        ->name('episodes.staff.assign');
+    Route::post('/episodios/{episode}/personal/{assignment}/finalizar', [MedicalEpisodeController::class, 'endStaffAssignment'])
+        ->whereUuid('episode')
+        ->whereNumber('assignment')
+        ->name('episodes.staff.end');
+    Route::post('/episodios/{episode}/camilla', [MedicalEpisodeController::class, 'assignBed'])
+        ->whereUuid('episode')
+        ->name('episodes.bed.assign');
+    Route::post('/episodios/{episode}/acompanante', [MedicalEpisodeController::class, 'updateCompanion'])
+        ->whereUuid('episode')
+        ->name('episodes.companion.update');
+    Route::post('/episodios/{episode}/acompanante/pin', [CompanionManagementController::class, 'generatePin'])
+        ->whereUuid('episode')
+        ->name('episodes.companion.pin');
+    Route::post('/episodios/{episode}/acompanante/revocar', [CompanionManagementController::class, 'revokeAccess'])
+        ->whereUuid('episode')
+        ->name('episodes.companion.revoke');
+    Route::post('/episodios/{episode}/acompanante/consentimiento', [CompanionManagementController::class, 'toggleConsent'])
+        ->whereUuid('episode')
+        ->name('episodes.companion.consent');
+
+    // Reportes analíticos y tablero de triage (Fase 6)
+    Route::get('/reportes', [EmergencyReportController::class, 'index'])->name('reports.index');
+
+    // Historial clínico oficial en PDF con marca de agua y auditoría forense (Fase 6)
+    Route::get('/episodios/{episode}/pdf', [EpisodePdfController::class, 'download'])
+        ->whereUuid('episode')
+        ->name('episodes.pdf.download');
+    Route::get('/episodios/{episode}/pdf/ver', [EpisodePdfController::class, 'stream'])
+        ->whereUuid('episode')
+        ->name('episodes.pdf.stream');
 });

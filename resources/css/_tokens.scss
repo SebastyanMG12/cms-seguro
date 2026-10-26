@@ -1,0 +1,70 @@
+/* ==========================================================================
+   HOSPITAL DE UBATÉ - DESIGN SYSTEM TOKENS (WCAG 2.2 AA COMPLIANT)
+   ========================================================================== */
+
+// 1. Paleta de Colores Institucional (Contraste verificado >= 4.5:1)
+$hospital-blue-dark:    #094067;
+$hospital-blue-primary: #0d5c9c;
+$hospital-blue-light:   #e7f1ff;
+$hospital-blue-border:  #b6d4fe;
+
+$hospital-neutral-900:  #212529;
+$hospital-neutral-800:  #343a40;
+$hospital-neutral-700:  #495057;
+$hospital-neutral-600:  #6c757d;
+$hospital-neutral-300:  #dee2e6;
+$hospital-neutral-200:  #e9ecef;
+$hospital-neutral-100:  #f8f9fa;
+$hospital-white:        #ffffff;
+
+// 2. Tokens de Triage (Resolución 5596 de 2015)
+// Cada nivel cuenta con color sólido, fondo tenue, borde y texto de alto contraste (> 4.5:1)
+$triage-1-solid:        #b30000;
+$triage-1-bg:           #fff0f0;
+$triage-1-border:       #f5c2c7;
+$triage-1-text:         #842029;
+
+$triage-2-solid:        #b34700;
+$triage-2-bg:           #fff4e6;
+$triage-2-border:       #fed7aa;
+$triage-2-text:         #7a3000;
+
+$triage-3-solid:        #855d00;
+$triage-3-bg:           #fffbe6;
+$triage-3-border:       #ffe58f;
+$triage-3-text:         #614500;
+
+$triage-4-solid:        #13653f;
+$triage-4-bg:           #e8f5e9;
+$triage-4-border:       #badbcc;
+$triage-4-text:         #0f5132;
+
+$triage-5-solid:        #084298;
+$triage-5-bg:           #e7f1ff;
+$triage-5-border:       #b6d4fe;
+$triage-5-text:         #084298;
+
+// 3. Token de Paciente Seleccionado (Sección 18.8)
+$selected-patient-bg:     #e7f1ff;
+$selected-patient-border: #0d5c9c;
+$selected-patient-text:   #094067;
+
+// 4. Tokens de Estado de Camillas y Habitaciones
+$status-disponible-bg:   #e8f5e9;
+$status-disponible-text: #0f5132;
+$status-ocupada-bg:      #fff0f0;
+$status-ocupada-text:    #842029;
+$status-limpieza-bg:     #fffbe6;
+$status-limpieza-text:   #614500;
+$status-mantenimiento-bg:#f8f9fa;
+$status-mantenimiento-text:#495057;
+
+// 5. Dimensiones y Accesibilidad WCAG 2.2 AA
+$touch-target-min: 44px;
+$focus-ring-color: #0d5c9c;
+$focus-ring-width: 2px;
+$focus-ring-offset: 2px;
+
+// 6. Tipografía y Densidad de Información
+$font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$font-family-tabular: "Courier New", Courier, monospace;

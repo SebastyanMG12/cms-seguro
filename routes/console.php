@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('mail:receive')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('hospital:expire-preregistrations')->hourly();
