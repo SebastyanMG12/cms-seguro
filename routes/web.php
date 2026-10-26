@@ -193,6 +193,10 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::post('/episodios/{episode}/personal', [MedicalEpisodeController::class, 'assignStaff'])
         ->whereUuid('episode')
         ->name('episodes.staff.assign');
+    Route::post('/episodios/{episode}/personal/{assignment}/finalizar', [MedicalEpisodeController::class, 'endStaffAssignment'])
+        ->whereUuid('episode')
+        ->whereNumber('assignment')
+        ->name('episodes.staff.end');
     Route::post('/episodios/{episode}/camilla', [MedicalEpisodeController::class, 'assignBed'])
         ->whereUuid('episode')
         ->name('episodes.bed.assign');

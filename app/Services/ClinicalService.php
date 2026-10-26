@@ -199,6 +199,54 @@ class ClinicalService
     }
 
     /**
+     * Finaliza la participación activa de un personal de apoyo en un episodio.
+     */
+    public function endStaffAssignment(EmergencyEpisode $episode, EpisodeAssignment $assignment, User $authUser, ?string $reason = null): EpisodeAssignment
+    {
+        return DB::transaction(function () use ($episode, $assignment, $authUser, $reason) {
+            $lockedEpisode = EmergencyEpisode::where('id', $episode->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedEpisode->isClosed()) {
+                throw ValidationException::withMessages([
+                    'staff' => 'No se puede modificar las asignaciones de un episodio cerrado.',
+                ]);
+            }
+
+            if ($assignment->episode_id !== $lockedEpisode->id) {
+                throw ValidationException::withMessages([
+                    'staff' => 'La asignación no corresponde al episodio especificado.',
+                ]);
+            }
+
+            if ($assignment->ended_at !== null) {
+                throw ValidationException::withMessages([
+                    'staff' => 'Esta asignación ya se encuentra finalizada.',
+                ]);
+            }
+
+            if ($assignment->role !== 'apoyo') {
+                throw ValidationException::withMessages([
+                    'staff' => 'No se puede desactivar al médico responsable directamente. Debe transferir la responsabilidad asignando un nuevo médico responsable.',
+                ]);
+            }
+
+            $now = now();
+            $assignment->ended_at = $now;
+            $assignment->save();
+
+            Audit::log('episodio.apoyo_finalizado', $lockedEpisode, [
+                'public_code' => $lockedEpisode->public_code,
+                'assignment_id' => $assignment->id,
+                'user_id' => $assignment->user_id,
+                'performed_by' => $authUser->id,
+                'reason' => $reason ?? 'Finalización de apoyo asistencial',
+            ]);
+
+            return $assignment;
+        });
+    }
+
+    /**
      * Asigna una camilla al episodio (exige que el episodio esté en estado 'ingresado').
      */
     public function assignBedToEpisode(EmergencyEpisode $episode, Bed $bed): BedAssignment

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Hospital;
 use App\Http\Controllers\Controller;
 use App\Models\Bed;
 use App\Models\EmergencyEpisode;
+use App\Models\EpisodeAssignment;
 use App\Models\User;
 use App\Services\ClinicalService;
 use App\Services\EpisodeStateMachine;
@@ -228,6 +229,20 @@ class MedicalEpisodeController extends Controller
 
         return redirect()->route('episodes.show', $episode)
             ->with('success', "Personal asistencial asignado en calidad de {$validated['role']}.");
+    }
+
+    public function endStaffAssignment(Request $request, EmergencyEpisode $episode, EpisodeAssignment $assignment, ClinicalService $clinicalService): RedirectResponse
+    {
+        Gate::authorize('endStaffAssignment', [$episode, $assignment]);
+
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $clinicalService->endStaffAssignment($episode, $assignment, auth()->user(), $validated['reason'] ?? null);
+
+        return redirect()->route('episodes.show', $episode)
+            ->with('success', 'Participación de apoyo asistencial finalizada exitosamente.');
     }
 
     public function assignBed(Request $request, EmergencyEpisode $episode, ClinicalService $clinicalService): RedirectResponse

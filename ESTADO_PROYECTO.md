@@ -133,6 +133,7 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 - **Preservación Forense NN**: Al conciliar identidad, el paciente NN original permanece intacto en la tabla `patients` y el código `NN-AAAAMMDD-XXXX` se conserva permanentemente en `emergency_episodes` para garantizar la trazabilidad forense y médico-legal.
 - **Excepción Legal Ley 1581 Art. 10**: Admisión inmediata para salvaguardar la vida sin exigir consentimiento previo a pacientes inconscientes o desorientados, formalizada mediante registro inmutable en `consents`.
 - **Control de Custodia Break-Glass**: Barrera de acceso excepcional que impide la consulta pasiva de historias clínicas por profesionales no asignados, exigiendo justificación auditada y bloqueando acciones clínicas en modo consulta.
+- **Ciclo de Personal de Apoyo vs. Responsable**: El médico tratante principal no puede ser eliminado dejando el episodio acéfalo (requiere transferencia asignando un nuevo responsable). En contraste, el personal de apoyo (`role = 'apoyo'`) puede ser desactivado/finalizado una vez concluida su labor asistencial puntual (por el propio profesional, el médico responsable o coordinación), liberando su carga activa y registrando el evento inmutable `episodio.apoyo_finalizado`.
 - **Contador Dinámico de Carga**: Evita campos desnormalizados propensos a inconsistencias; calcula los episodios abiertos activos directamente sobre `episode_assignments` con `distinct('episode_id')`.
 - **Diseño sin Emojis y Accesible**: Reemplazo total de emojis por iconografía lineal Bootstrap Icons local compilada con Vite, tokens de diseño con contraste verificado >= 4.5:1 y objetivos táctiles de 44px.
 
@@ -147,13 +148,13 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 5. Última prueba exitosa
-- **Fecha y hora:** 2026-10-25 20:49:58 -05:00
+- **Fecha y hora:** 2026-10-25 21:08:10 -05:00
 - **Comando ejecutado:** `php artisan test`
-- **Resultado:** 110 pasadas, 0 fallidas (430 aserciones). Tiempo: 54.23s
+- **Resultado:** 114 pasadas, 0 fallidas (446 aserciones). Tiempo: 53.83s
   - `Tests\Unit\ExampleTest`: 1 pasada
   - `Tests\Feature\ExampleTest`: 1 pasada
   - `Tests\Feature\IdentityReconciliationTest`: 13 pasadas
-  - `Tests\Feature\MedicalEpisodeTest`: 21 pasadas
+  - `Tests\Feature\MedicalEpisodeTest`: 25 pasadas
   - `Tests\Feature\PhysicalResourcesAndStaffTest`: 16 pasadas
   - `Tests\Feature\PreregistrationTest`: 15 pasadas
   - `Tests\Feature\SecurityTest`: 38 pasadas

@@ -520,4 +520,67 @@ class MedicalEpisodeTest extends TestCase
         $responseActivos->assertSee($this->episode->public_code);
         $responseActivos->assertSee('UBT22222');
     }
+
+    public function test_support_staff_can_deactivate_themselves_from_episode(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+        $assignmentSupport = $clinicalService->assignStaff($this->episode, $this->nurse, 'apoyo');
+
+        $this->assertSame(1, $clinicalService->countActivePatients($this->nurse));
+        $this->assertNull($assignmentSupport->fresh()->ended_at);
+
+        $res = $this->actingAs($this->nurse)->post(route('episodes.staff.end', [$this->episode, $assignmentSupport]), [
+            'reason' => 'Toma de signos y vía periférica completada',
+        ]);
+
+        $res->assertRedirect(route('episodes.show', $this->episode));
+        $res->assertSessionHas('success');
+
+        $this->assertNotNull($assignmentSupport->fresh()->ended_at);
+        $this->assertSame(0, $clinicalService->countActivePatients($this->nurse));
+
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'episodio.apoyo_finalizado',
+            'model_type' => 'EmergencyEpisode',
+            'model_id' => $this->episode->id,
+        ]);
+    }
+
+    public function test_responsible_doctor_can_deactivate_support_staff(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+        $assignmentSupport = $clinicalService->assignStaff($this->episode, $this->nurse, 'apoyo');
+
+        $res = $this->actingAs($this->doctor)->post(route('episodes.staff.end', [$this->episode, $assignmentSupport]));
+
+        $res->assertRedirect(route('episodes.show', $this->episode));
+        $res->assertSessionHas('success');
+        $this->assertNotNull($assignmentSupport->fresh()->ended_at);
+    }
+
+    public function test_cannot_deactivate_responsible_doctor_via_end_support_endpoint(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $assignmentResp = $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+
+        // La policy rechaza si el rol no es 'apoyo'
+        $res = $this->actingAs($this->doctor)->post(route('episodes.staff.end', [$this->episode, $assignmentResp]));
+
+        $res->assertStatus(403);
+        $this->assertNull($assignmentResp->fresh()->ended_at);
+    }
+
+    public function test_unauthorized_user_cannot_deactivate_support_staff(): void
+    {
+        $clinicalService = app(ClinicalService::class);
+        $clinicalService->assignStaff($this->episode, $this->doctor, 'responsable');
+        $assignmentSupport = $clinicalService->assignStaff($this->episode, $this->nurse, 'apoyo');
+
+        $res = $this->actingAs($this->auditor)->post(route('episodes.staff.end', [$this->episode, $assignmentSupport]));
+
+        $res->assertStatus(403);
+        $this->assertNull($assignmentSupport->fresh()->ended_at);
+    }
 }

@@ -353,12 +353,22 @@
 
                 @if ($episode->activeAssignments->where('role', 'apoyo')->count() > 0)
                     <div class="mb-0">
-                        <span class="text-muted small d-block">Personal de Apoyo:</span>
+                        <span class="text-muted small d-block mb-1">Personal de Apoyo:</span>
                         <ul class="list-unstyled mb-0 small">
                             @foreach ($episode->activeAssignments->where('role', 'apoyo') as $asg)
-                                <li>
-                                    <i class="bi bi-check2 text-primary" aria-hidden="true"></i> {{ $asg->user->name }}
-                                    <small class="text-muted font-monospace tabular-nums">({{ $asg->user->staffProfile?->code }})</small>
+                                <li class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+                                    <div>
+                                        <i class="bi bi-person-check text-primary" aria-hidden="true"></i> {{ $asg->user->name }}
+                                        <small class="text-muted font-monospace tabular-nums">({{ $asg->user->staffProfile?->code }})</small>
+                                    </div>
+                                    @can('endStaffAssignment', [$episode, $asg])
+                                        <form method="POST" action="{{ route('episodes.staff.end', [$episode, $asg]) }}" class="d-inline" onsubmit="return confirm('¿Desea finalizar la participación de apoyo de {{ $asg->user->name }} en este episodio?');">
+                                            @csrf
+                                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size: 0.75rem;" title="Desactivar / Finalizar función de apoyo">
+                                                <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Desactivar
+                                            </button>
+                                        </form>
+                                    @endcan
                                 </li>
                             @endforeach
                         </ul>
@@ -662,6 +672,27 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    @if ($episode->activeAssignments->where('role', 'apoyo')->count() > 0)
+                        <div class="mb-3 p-2 bg-light border rounded">
+                            <span class="text-muted small d-block fw-semibold mb-2">Personal de Apoyo Activo:</span>
+                            <ul class="list-unstyled mb-0 small">
+                                @foreach ($episode->activeAssignments->where('role', 'apoyo') as $asg)
+                                    <li class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+                                        <span>
+                                            <i class="bi bi-person-check text-primary me-1" aria-hidden="true"></i>{{ $asg->user->name }}
+                                            <span class="text-muted font-monospace tabular-nums">({{ $asg->user->staffProfile?->code }})</span>
+                                        </span>
+                                        @can('endStaffAssignment', [$episode, $asg])
+                                            <button type="submit" form="endModalStaffForm_{{ $asg->id }}" class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size: 0.75rem;">
+                                                <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Desactivar
+                                            </button>
+                                        @endcan
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Profesional en Turno Activo <span class="text-danger">*</span></label>
                         <select class="form-select" name="staff_user_id" required>
@@ -687,6 +718,14 @@
         </div>
     </div>
 </div>
+
+@foreach ($episode->activeAssignments->where('role', 'apoyo') as $asg)
+    @can('endStaffAssignment', [$episode, $asg])
+        <form id="endModalStaffForm_{{ $asg->id }}" method="POST" action="{{ route('episodes.staff.end', [$episode, $asg]) }}" onsubmit="return confirm('¿Desea finalizar la participación de apoyo de {{ $asg->user->name }} en este episodio?');">
+            @csrf
+        </form>
+    @endcan
+@endforeach
 
 {{-- Modal Registrar Egreso --}}
 <div class="modal fade" id="dischargeModal" tabindex="-1" aria-hidden="true">

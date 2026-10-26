@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\EmergencyEpisode;
+use App\Models\EpisodeAssignment;
 use App\Models\User;
 
 class EmergencyEpisodePolicy
@@ -63,6 +64,18 @@ class EmergencyEpisodePolicy
     public function assignStaff(User $user, EmergencyEpisode $episode): bool
     {
         return $user->can('episodios.asignar_personal') && $episode->isOpen();
+    }
+
+    public function endStaffAssignment(User $user, EmergencyEpisode $episode, EpisodeAssignment $assignment): bool
+    {
+        if ($episode->isClosed() || $assignment->ended_at !== null || $assignment->role !== 'apoyo') {
+            return false;
+        }
+
+        return $assignment->user_id === $user->id
+            || $episode->responsible_user_id === $user->id
+            || $user->hasAnyRole(['coordinador', 'administrador'])
+            || $user->can('episodios.asignar_personal');
     }
 
     public function assignBed(User $user, EmergencyEpisode $episode): bool
