@@ -37,8 +37,12 @@ class Consent extends Model
 
     protected static function booted(): void
     {
-        // Registro inmutable: no se permite actualizar ni eliminar filas existentes
-        static::updating(function () {
+        // Registro inmutable: solo se permite registrar la fecha de revocación una única vez
+        static::updating(function (Consent $consent) {
+            if ($consent->isDirty('revoked_at') && $consent->getOriginal('revoked_at') === null && count($consent->getDirty()) === 1) {
+                return;
+            }
+
             throw new RuntimeException('Consent records are immutable; revoke and create a new row instead.');
         });
 

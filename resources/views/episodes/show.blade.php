@@ -377,6 +377,24 @@
             </div>
         </div>
 
+        {{-- Alerta de PIN Presencial Generado (Un Solo Uso) --}}
+        @if (session('generated_pin'))
+            <div class="alert alert-success border-success shadow-sm mb-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-key-fill fs-2 text-success me-2" aria-hidden="true"></i>
+                    <div>
+                        <strong class="d-block text-success">PIN Presencial Generado:</strong>
+                        <div class="display-6 font-monospace tabular-nums fw-bold text-primary my-1">
+                            {{ session('generated_pin') }}
+                        </div>
+                        <p class="small mb-0 text-dark">
+                            Entregue este código de 6 dígitos <strong>personalmente</strong> al acompañante verificado. Por estrictas razones de seguridad y custodia de la historia clínica (Ley 1581 de 2012), este PIN <strong>no se volverá a mostrar en pantalla</strong>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- Acompañante o Representante --}}
         <div class="card shadow-sm mb-3 card-compact">
             <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
@@ -389,9 +407,110 @@
             </div>
             <div class="card-body p-3 small">
                 @if ($episode->companion)
-                    <div><strong>{{ $episode->companion->name }}</strong></div>
+                    <div><strong>{{ $episode->companion->name ?? 'Sin nombre registrado' }}</strong></div>
                     <div class="text-muted">Parentesco: {{ $episode->companion->relationship ?? 'No especificado' }}</div>
                     <div class="text-muted tabular-nums">Teléfono: {{ $episode->companion->phone ?? 'No registrado' }}</div>
+
+                    <hr class="my-2">
+
+                    {{-- Estado del PIN de Acceso --}}
+                    <div class="mb-2">
+                        <span class="text-muted small d-block mb-1">Acceso y PIN Presencial:</span>
+                        @if ($episode->companion->revoked_at)
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                                <span class="badge bg-danger">Acceso Revocado</span>
+                                @if ($episode->isOpen())
+                                    <form method="POST" action="{{ route('episodes.companion.pin', $episode) }}" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">
+                                            <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Emitir Nuevo PIN
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                            <small class="text-muted d-block mt-1">Revocado el {{ $episode->companion->revoked_at->format('d/m/Y H:i') }}</small>
+                        @elseif ($episode->companion->pin_hash)
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                                <span class="badge bg-success"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>PIN Activo</span>
+                                @if ($episode->isOpen())
+                                    <div class="btn-group btn-group-sm">
+                                        <form method="POST" action="{{ route('episodes.companion.pin', $episode) }}" class="d-inline" onsubmit="return confirm('¿Regenerar PIN? El código anterior quedará invalidado de inmediato.');">
+                                            @csrf
+                                            <button type="submit" class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" title="Regenerar PIN">
+                                                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Regenerar
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('episodes.companion.revoke', $episode) }}" class="d-inline ms-1" onsubmit="return confirm('¿Revocar el acceso del acompañante a este episodio?');">
+                                            @csrf
+                                            <button type="submit" class="btn btn-outline-danger py-0 px-2" style="font-size: 0.75rem;" title="Revocar Acceso">
+                                                <i class="bi bi-slash-circle me-1" aria-hidden="true"></i>Revocar
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endif
+                            </div>
+                            @if ($episode->companion->verified_at)
+                                <small class="text-muted d-block mt-1 font-monospace tabular-nums">
+                                    Verificado: {{ $episode->companion->verified_at->format('d/m/Y H:i') }}
+                                    @if ($episode->companion->verifiedBy)
+                                        por {{ $episode->companion->verifiedBy->name }}
+                                    @endif
+                                </small>
+                            @endif
+                        @else
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                                <span class="badge bg-secondary">Sin PIN Emitido</span>
+                                @if ($episode->isOpen())
+                                    <form method="POST" action="{{ route('episodes.companion.pin', $episode) }}" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-primary py-0 px-2" style="font-size: 0.75rem;">
+                                            <i class="bi bi-key me-1" aria-hidden="true"></i>Generar PIN
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+
+                    <hr class="my-2">
+
+                    {{-- Consentimiento de Compartir Información Clínica (Ley 1581) --}}
+                    <div>
+                        <span class="text-muted small d-block mb-1">Compartir Información Clínica:</span>
+                        @if ($episode->hasActiveCompanionConsent())
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                                <span class="badge bg-success">Autorizado</span>
+                                @if ($episode->isOpen())
+                                    <form method="POST" action="{{ route('episodes.companion.consent', $episode) }}" class="d-inline" onsubmit="return confirm('¿Revocar la autorización del paciente para compartir información clínica con el acompañante?');">
+                                        @csrf
+                                        <input type="hidden" name="enable" value="0">
+                                        <button type="submit" class="btn btn-outline-warning py-0 px-2" style="font-size: 0.75rem;">
+                                            <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Revocar
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Otorgado el {{ $episode->activeCompanionConsent()?->granted_at?->format('d/m/Y H:i') }}
+                            </small>
+                        @else
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                                <span class="badge bg-secondary">No Autorizado</span>
+                                @if ($episode->isOpen())
+                                    <form method="POST" action="{{ route('episodes.companion.consent', $episode) }}" class="d-inline">
+                                        @csrf
+                                        <input type="hidden" name="enable" value="1">
+                                        <input type="hidden" name="granted_by" value="paciente">
+                                        <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 0.75rem;">
+                                            <i class="bi bi-check2 me-1" aria-hidden="true"></i>Autorizar
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                            <small class="text-muted d-block mt-1">Solo visualiza estado operativo básico.</small>
+                        @endif
+                    </div>
+
                 @else
                     <span class="text-muted">Sin datos de acompañante registrados.</span>
                 @endif

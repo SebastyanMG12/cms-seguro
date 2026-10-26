@@ -158,6 +158,73 @@ class EmergencyEpisode extends Model
     }
 
     /**
+     * Retorna el nombre enmascarado del paciente (Primer nombre e inicial de apellido) para consultas de acompañante.
+     */
+    public function getMaskedPatientNameAttribute(): string
+    {
+        if ($this->is_nn) {
+            return $this->nn_code ?? 'Paciente sin identificar';
+        }
+
+        $fullName = trim($this->patient?->full_name ?? '');
+        if ($fullName === '') {
+            return 'Paciente';
+        }
+
+        $parts = preg_split('/\s+/', $fullName);
+        if (count($parts) === 1) {
+            return $parts[0];
+        }
+
+        $firstName = $parts[0];
+        $lastInitial = mb_strtoupper(mb_substr($parts[1], 0, 1));
+
+        return "{$firstName} {$lastInitial}.";
+    }
+
+    /**
+     * Verifica si existe consentimiento activo otorgado para compartir información clínica con acompañante.
+     */
+    public function hasActiveCompanionConsent(): bool
+    {
+        $latestConsent = $this->consents()
+            ->where('type', 'compartir_acompanante')
+            ->latest('id')
+            ->first();
+
+        return $latestConsent !== null && $latestConsent->revoked_at === null;
+    }
+
+    /**
+     * Retorna el registro de consentimiento activo si existe.
+     */
+    public function activeCompanionConsent(): ?Consent
+    {
+        return $this->consents()
+            ->where('type', 'compartir_acompanante')
+            ->whereNull('revoked_at')
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * Determina si el acceso del acompañante ha expirado (24 horas después del egreso).
+     */
+    public function isCompanionAccessExpired(): bool
+    {
+        if ($this->isOpen()) {
+            return false;
+        }
+
+        $closedTime = $this->closed_at ?? $this->discharged_at;
+        if (! $closedTime) {
+            return false;
+        }
+
+        return $closedTime->copy()->addHours(24)->isPast();
+    }
+
+    /**
      * Generate sequential NN identifier (format: NN-AAAAMMDD-XXXX)
      */
     public static function generateNnCode(?\DateTimeInterface $date = null): string

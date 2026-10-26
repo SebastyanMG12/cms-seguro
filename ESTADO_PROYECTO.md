@@ -5,8 +5,8 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 1. Fase actual
-- **Fase:** Fase 4B: Registro de emergencia para paciente sin identificar (NN) y Conciliación de identidad (Completada con éxito).
-- **Rama:** `feature/fase-4b-paciente-nn`
+- **Fase:** Fase 5: Módulo de Acceso y Seguimiento del Acompañante (Completada con éxito).
+- **Rama:** `feature/fase-5-modulo-acompanante`
 
 ---
 
@@ -125,11 +125,33 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
   - Permisos nuevos: `episodios.crear_nn` y `episodios.conciliar`, documentados en `docs/roles-permisos.md`.
   - Vistas accesibles WCAG 2.2 AA: `episodes.nn.create` (con banner de interés vital) y `episodes.reconcile` (Comparison View en dos columnas con buscador asíncrono por documento).
 
+### Fase 5: Módulo de Acceso y Seguimiento del Acompañante
+- **Servicio de dominio `CompanionService`**:
+  - Emisión de PIN numérico de 6 dígitos con hashing criptográfico (`Hash::make`), trazabilidad de funcionario emisor (`verified_by_user_id`), fecha (`verified_at`) y auditoría `acompanante.pin_generado`.
+  - Revocación formal de acceso (`revoked_at`), con auditoría `acompanante.acceso_revocado` y expulsión inmediata de sesiones activas.
+  - Control de consentimiento clínico (`compartir_acompanante`): gestión granular del consentimiento del paciente para compartir procedimientos y diagnósticos con su acompañante.
+  - Validación de credenciales con protección anti-enumeración (mismo mensaje genérico para código y PIN erróneo).
+  - Rate limiting estricto con bloqueo temporal tras 5 intentos fallidos.
+  - Caducidad automática de consulta a las 24 horas del egreso del paciente.
+- **Minimización de datos (Ley 1581 de 2012 / Res. 1995 de 1999)**:
+  - Nombre del paciente enmascarado (`Carlos G.` o código forense `NN-AAAAMMDD-XXXX`).
+  - Prohibición absoluta de exhibición de cédula, teléfono, alergias, tipo de sangre y notas subjetivas.
+  - Estado operativo mediante badges accesibles (En espera, En valoración, Ingresado, Egresado).
+  - Ubicación institucional general y equipo asistencial tratante sin nombres personales individuales.
+  - Línea de tiempo vertical con horas exactas de recepción, triaje, ingreso y egreso.
+  - Información clínica diagnóstica restringida exclusivamente a pacientes con consentimiento activo; en ausencia de consentimiento, se exhibe el panel informativo legal obligatorio.
+- **Vistas y UI (`DISEÑO_FRONTEND.md`)**:
+  - `companion.login`: Formulario Mobile-First accesible (touch target >= 44px, tipografía tabular).
+  - `companion.status`: Workstation de seguimiento móvil y desktop, línea de tiempo vertical y refresco relativo.
+  - `episodes.show`: Alerta de un solo uso para entrega presencial del PIN, badges de estado de PIN y consentimiento, y botones de regeneración, revocación y autorización.
+
 ---
 
 ## 3. Decisiones técnicas
-- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` en todas las transiciones de estado clínico, asignación de camillas, turnos y conciliación de identidad.
+- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` en todas las transiciones de estado clínico, asignación de camillas, turnos, conciliación de identidad y emisión de PINs.
 - **Inmutabilidad Médica (Res. 1995/1999)**: Protección en Eloquent (`booted`) y base de datos contra edición o borrado de evoluciones clínicas; el modelo solo admite adición de notas aclaratorias o anulaciones enlazadas.
+- **Inmutabilidad de Consentimientos (Ley 1581)**: El modelo `Consent` prohíbe modificaciones o eliminaciones arbitrarias; únicamente admite registrar `revoked_at` de forma atómica para registrar la revocación.
+- **Anti-Enumeración en Canal Acompañante**: Respuestas de autenticación idénticas ante código inválido, PIN inválido o acompañante no registrado, impidiendo el escaneo automatizado de episodios.
 - **Preservación Forense NN**: Al conciliar identidad, el paciente NN original permanece intacto en la tabla `patients` y el código `NN-AAAAMMDD-XXXX` se conserva permanentemente en `emergency_episodes` para garantizar la trazabilidad forense y médico-legal.
 - **Excepción Legal Ley 1581 Art. 10**: Admisión inmediata para salvaguardar la vida sin exigir consentimiento previo a pacientes inconscientes o desorientados, formalizada mediante registro inmutable en `consents`.
 - **Control de Custodia Break-Glass**: Barrera de acceso excepcional que impide la consulta pasiva de historias clínicas por profesionales no asignados, exigiendo justificación auditada y bloqueando acciones clínicas en modo consulta.
@@ -140,7 +162,6 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 4. Pendientes para siguientes fases
-- **Fase 5**: Módulo acompañante (código público + PIN presencial, rate limiting, revocación y actualización periódica).
 - **Fase 6**: Administración avanzada, reportes y generación de PDF con marca de agua.
 - **Fase 7**: Endurecimiento, pruebas de seguridad y `docs/seguridad.md`.
 - **Fase 8**: Preparación de producción y `docs/cumplimiento.md`.
@@ -148,11 +169,12 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 5. Última prueba exitosa
-- **Fecha y hora:** 2026-10-25 21:08:10 -05:00
+- **Fecha y hora:** 2026-10-25 21:28:32 -05:00
 - **Comando ejecutado:** `php artisan test`
-- **Resultado:** 114 pasadas, 0 fallidas (446 aserciones). Tiempo: 53.83s
+- **Resultado:** 125 pasadas, 0 fallidas (512 aserciones). Tiempo: 67.81s
   - `Tests\Unit\ExampleTest`: 1 pasada
   - `Tests\Feature\ExampleTest`: 1 pasada
+  - `Tests\Feature\CompanionTrackingTest`: 11 pasadas
   - `Tests\Feature\IdentityReconciliationTest`: 13 pasadas
   - `Tests\Feature\MedicalEpisodeTest`: 25 pasadas
   - `Tests\Feature\PhysicalResourcesAndStaffTest`: 16 pasadas

@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Hospital\CompanionManagementController;
 use App\Http\Controllers\Hospital\EmergencyNnController;
 use App\Http\Controllers\Hospital\MedicalEpisodeController;
 use App\Http\Controllers\Hospital\OccupancyController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\Hospital\ShiftController;
 use App\Http\Controllers\Hospital\StaffController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\Public\CompanionTrackingController;
 use App\Http\Controllers\ReceivedEmailController;
 use App\Http\Controllers\Security\PasswordController;
 use App\Http\Controllers\Security\TwoFactorController;
@@ -35,6 +37,14 @@ Route::post('/preregistro', [PreregistrationController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('preregistro.store');
 Route::get('/preregistro/exito/{code}', [PreregistrationController::class, 'success'])->name('preregistro.success');
+
+// Módulo público de consulta y seguimiento del acompañante (Fase 5)
+Route::get('/acompanante', [CompanionTrackingController::class, 'loginForm'])->name('companion.login');
+Route::post('/acompanante', [CompanionTrackingController::class, 'authenticate'])
+    ->middleware('throttle:10,1')
+    ->name('companion.auth');
+Route::get('/acompanante/estado', [CompanionTrackingController::class, 'status'])->name('companion.status');
+Route::post('/acompanante/salir', [CompanionTrackingController::class, 'logout'])->name('companion.logout');
 
 // Solo visitantes (no autenticados)
 // Registro público cerrado: los usuarios los crea un administrador.
@@ -203,4 +213,13 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::post('/episodios/{episode}/acompanante', [MedicalEpisodeController::class, 'updateCompanion'])
         ->whereUuid('episode')
         ->name('episodes.companion.update');
+    Route::post('/episodios/{episode}/acompanante/pin', [CompanionManagementController::class, 'generatePin'])
+        ->whereUuid('episode')
+        ->name('episodes.companion.pin');
+    Route::post('/episodios/{episode}/acompanante/revocar', [CompanionManagementController::class, 'revokeAccess'])
+        ->whereUuid('episode')
+        ->name('episodes.companion.revoke');
+    Route::post('/episodios/{episode}/acompanante/consentimiento', [CompanionManagementController::class, 'toggleConsent'])
+        ->whereUuid('episode')
+        ->name('episodes.companion.consent');
 });

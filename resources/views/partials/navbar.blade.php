@@ -26,6 +26,10 @@
                     <a class="nav-link text-warning fw-semibold {{ request()->routeIs('preregistro.*') ? 'active' : '' }}"
                         href="{{ route('preregistro.create') }}">Pre-registro Urgencias</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-semibold {{ request()->routeIs('companion.*') ? 'active' : '' }}"
+                        href="{{ route('companion.login') }}">Acompañantes</a>
+                </li>
 
                 @auth
                     <li class="nav-item">
