@@ -60,4 +60,16 @@ class EmergencyEpisodePolicy
     {
         return $user->can('episodios.ver') && $episode->isOpen();
     }
+
+    public function createNn(User $user): bool
+    {
+        return $user->can('episodios.crear_nn');
+    }
+
+    public function reconcile(User $user, EmergencyEpisode $episode): bool
+    {
+        return $user->can('episodios.conciliar')
+            && $episode->isNn()
+            && ! $episode->isReconciled();
+    }
 }

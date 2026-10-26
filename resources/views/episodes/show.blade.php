@@ -59,6 +59,40 @@
     </div>
 @endif
 
+{{-- Banner de Estado de Paciente NN y Conciliación de Identidad (Fase 4B) --}}
+@if ($episode->is_nn)
+    @if ($episode->isReconciled())
+        <div class="alert alert-success border-success py-2 px-3 small mb-3 shadow-sm" role="alert">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <i class="bi bi-patch-check-fill text-success fs-5 me-2" aria-hidden="true"></i>
+                    <strong>Identidad civil conciliada y verificada:</strong> 
+                    Vinculado formalmente a <strong>{{ $episode->patient?->full_name }}</strong> el <span class="tabular-nums">{{ $episode->reconciled_at?->format('d/m/Y H:i') }}</span> por {{ $episode->reconciledByUser?->name }}.
+                    <span class="text-muted font-monospace ms-2">(Código original de ingreso: {{ $episode->nn_code }})</span>
+                </div>
+                <span class="badge bg-success font-monospace px-2 py-1"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>Conciliado</span>
+            </div>
+            <div class="mt-2 p-2 bg-white rounded border border-success-subtle small text-dark">
+                <strong><i class="bi bi-file-earmark-check me-1 text-success" aria-hidden="true"></i>Evidencia de verificación registrada:</strong>
+                {{ $episode->reconciliation_evidence }}
+            </div>
+        </div>
+    @else
+        <div class="alert alert-warning border-warning py-2 px-3 small mb-3 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert">
+            <div>
+                <i class="bi bi-shield-exclamation text-warning fs-5 me-2" aria-hidden="true"></i>
+                <strong>Paciente Ingresado como NN ({{ $episode->nn_code }}):</strong>
+                Atención médica inmediata sin consentimiento previo por interés vital (Ley 1581 de 2012 Art. 10).
+            </div>
+            @can('reconcile', $episode)
+                <a href="{{ route('episodes.reconcile.create', $episode) }}" class="btn btn-sm btn-primary py-1 px-3 shadow-sm fw-semibold">
+                    <i class="bi bi-person-check me-1" aria-hidden="true"></i>Conciliar Identidad
+                </a>
+            @endcan
+        </div>
+    @endif
+@endif
+
 {{-- Barra de Acciones Clínicas por Estado (Regla Sección 7.3) --}}
 <div class="card shadow-sm border mb-3 bg-light">
     <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
@@ -210,6 +244,23 @@
                 <div class="small mb-1">
                     <span class="text-muted">Sexo:</span> {{ ucfirst($episode->patient?->gender ?? 'No especificado') }}
                 </div>
+
+                @if ($episode->is_nn)
+                    <div class="p-2 bg-light border rounded small mt-2 mb-2">
+                        <strong class="d-block text-dark mb-1"><i class="bi bi-person-exclamation me-1 text-danger" aria-hidden="true"></i>Datos de Admisión de Urgencia (NN):</strong>
+                        <div class="row g-1">
+                            <div class="col-6"><span class="text-muted">Sexo aparente:</span> <span class="text-capitalize">{{ $episode->apparent_sex }}</span></div>
+                            <div class="col-6"><span class="text-muted">Edad estimada:</span> {{ $episode->estimated_age }}</div>
+                            <div class="col-12"><span class="text-muted">Medio llegada:</span> {{ ucfirst($episode->arrival_mode) }} &mdash; {{ $episode->brought_by_name }}</div>
+                            @if ($episode->distinguishing_marks)
+                                <div class="col-12 mt-1">
+                                    <span class="text-muted d-block">Señas/Vestimenta:</span>
+                                    <span class="text-dark">{{ $episode->distinguishing_marks }}</span>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
 
                 <hr class="my-2">
 

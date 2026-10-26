@@ -8,10 +8,15 @@
         <h1 class="h4 mb-0 fw-bold text-dark">Servicio de Urgencias - Atención Clínica</h1>
         <p class="text-muted small mb-0">Gestión de episodios, clasificación de triage y censo de pacientes en urgencias.</p>
     </div>
-    <div>
+    <div class="d-flex align-items-center gap-2">
         <span class="badge bg-primary-subtle text-primary border px-3 py-2 fs-6 tabular-nums">
             <i class="bi bi-person-badge me-1" aria-hidden="true"></i> Mis pacientes asignados: <strong>{{ $myActivePatientsCount }}</strong>
         </span>
+        @can('episodios.crear_nn')
+            <a href="{{ route('episodes.nn.create') }}" class="btn btn-danger btn-sm py-2 px-3 fw-semibold shadow-sm">
+                <i class="bi bi-person-exclamation me-1" aria-hidden="true"></i>Registrar Paciente NN
+            </a>
+        @endcan
     </div>
 </div>
 
@@ -79,7 +84,20 @@
                             @endif
                         </td>
                         <td>
-                            <strong class="d-block">{{ $ep->patient?->full_name ?? 'Paciente no identificado' }}</strong>
+                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                <strong class="d-block">{{ $ep->patient?->full_name ?? 'Paciente no identificado' }}</strong>
+                                @if ($ep->is_nn)
+                                    @if ($ep->isReconciled())
+                                        <span class="badge bg-success-subtle text-success border border-success small" title="Conciliado de {{ $ep->nn_code }}">
+                                            <i class="bi bi-patch-check me-1" aria-hidden="true"></i>Conciliado
+                                        </span>
+                                    @else
+                                        <span class="badge bg-danger-subtle text-danger border border-danger small">
+                                            <i class="bi bi-person-fill-exclamation me-1" aria-hidden="true"></i>NN: {{ $ep->nn_code }}
+                                        </span>
+                                    @endif
+                                @endif
+                            </div>
                             <small class="text-muted text-truncate d-inline-block" style="max-width: 220px;" title="{{ $ep->reason }}">
                                 {{ $ep->reason }}
                             </small>
@@ -169,6 +187,13 @@
                             <a href="{{ route('episodes.show', $ep) }}" class="btn btn-sm btn-outline-primary py-0 px-2">
                                 <i class="bi bi-folder2-open me-1" aria-hidden="true"></i> Historia
                             </a>
+                            @if ($ep->isNn() && ! $ep->isReconciled())
+                                @can('reconcile', $ep)
+                                    <a href="{{ route('episodes.reconcile.create', $ep) }}" class="btn btn-sm btn-outline-warning py-0 px-2 mt-1 d-block text-nowrap" title="Conciliar identidad civil">
+                                        <i class="bi bi-person-check me-1" aria-hidden="true"></i> Conciliar
+                                    </a>
+                                @endcan
+                            @endif
                         </td>
                     </tr>
                 @empty

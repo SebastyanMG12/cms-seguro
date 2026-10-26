@@ -5,8 +5,8 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 1. Fase actual
-- **Fase:** Fase 4: Módulo médico (Completada con éxito).
-- **Rama:** `feature/fase-4-modulo-medico`
+- **Fase:** Fase 4B: Registro de emergencia para paciente sin identificar (NN) y Conciliación de identidad (Completada con éxito).
+- **Rama:** `feature/fase-4b-paciente-nn`
 
 ---
 
@@ -108,18 +108,35 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
   - Tablero de episodios con pestañas filtradas (`activos`, `en_espera`, `preregistrados`, `egresados`), resaltado del paciente seleccionado en azul (`.selected-patient`).
   - Barra de acciones con habilitación dinámica según el estado del episodio y tooltips explicativos en acciones deshabilitadas; variante de solo lectura para episodios cerrados.
 
+### Fase 4B: Registro de emergencia para paciente NN y Conciliación de identidad
+- **Registro de emergencia NN (`IdentityReconciliationService::registerEmergencyNn`)**:
+  - Código identificador temporal secuencial diario correlativo: `NN-AAAAMMDD-XXXX` (ej: `NN-20261025-0001`).
+  - Datos mínimos de admisión: sexo aparente (`masculino`, `femenino`, `indeterminado`), edad estimada, señas particulares y vestimenta, forma de llegada (`ambulancia`, `policia`, `bomberos`, `transeunte`, `propio_pie`, `otro`), quién lo trajo e identificación/placa de entrega.
+  - Regla legal: NO se exige documento, nombres, teléfono ni consentimiento firmado previo.
+  - Excepción legal de consentimiento: amparada bajo el Artículo 10 Literal B de la Ley 1581 de 2012 y Decreto 1377 de 2013 ("interés vital, paciente sin capacidad"), creando automáticamente registro de consentimiento inmutable por excepción médica.
+  - El episodio ingresa directamente a sala de urgencias en estado `en_espera` con marca de tiempo oficial del servidor (`arrived_at = now()`).
+- **Conciliación de identidad (`IdentityReconciliationService::reconcileIdentity`)**:
+  - Vinculación formal de la historia clínica con el paciente identificado verificado (sea existente en base de datos o recién identificado con documento físico).
+  - Preservación histórica forense: El registro inicial de paciente NN no se elimina; el episodio mantiene su código histórico `nn_code` y la referencia `original_nn_patient_id`.
+  - Exigencia estricta de evidencia de verificación: Campo obligatorio `reconciliation_evidence` (mínimo 10 caracteres) para constancia de custodia legal.
+  - Transacción atómica con bloqueo `lockForUpdate` y auditoría inmutable del evento `episodio.identidad_conciliada`.
+- **Autorización granular y vistas**:
+  - Permisos nuevos: `episodios.crear_nn` y `episodios.conciliar`, documentados en `docs/roles-permisos.md`.
+  - Vistas accesibles WCAG 2.2 AA: `episodes.nn.create` (con banner de interés vital) y `episodes.reconcile` (Comparison View en dos columnas con buscador asíncrono por documento).
+
 ---
 
 ## 3. Decisiones técnicas
-- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` en todas las transiciones de estado clínico, asignación de camillas y personal asistencial.
+- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` en todas las transiciones de estado clínico, asignación de camillas, turnos y conciliación de identidad.
 - **Inmutabilidad Médica (Res. 1995/1999)**: Protección en Eloquent (`booted`) y base de datos contra edición o borrado de evoluciones clínicas; el modelo solo admite adición de notas aclaratorias o anulaciones enlazadas.
+- **Preservación Forense NN**: Al conciliar identidad, el paciente NN original permanece intacto en la tabla `patients` y el código `NN-AAAAMMDD-XXXX` se conserva permanentemente en `emergency_episodes` para garantizar la trazabilidad forense y médico-legal.
+- **Excepción Legal Ley 1581 Art. 10**: Admisión inmediata para salvaguardar la vida sin exigir consentimiento previo a pacientes inconscientes o desorientados, formalizada mediante registro inmutable en `consents`.
 - **Contador Dinámico de Carga**: Evita campos desnormalizados propensos a inconsistencias; calcula los episodios abiertos activos directamente sobre `episode_assignments`.
 - **Diseño sin Emojis y Accesible**: Reemplazo total de emojis por iconografía lineal Bootstrap Icons local compilada con Vite, tokens de diseño con contraste verificado >= 4.5:1 y objetivos táctiles de 44px.
 
 ---
 
 ## 4. Pendientes para siguientes fases
-- **Fase 4B**: Registro de emergencia (paciente sin identificar / NN, conciliación de identidad).
 - **Fase 5**: Módulo acompañante (código público + PIN presencial, rate limiting, revocación y actualización periódica).
 - **Fase 6**: Administración avanzada, reportes y generación de PDF con marca de agua.
 - **Fase 7**: Endurecimiento, pruebas de seguridad y `docs/seguridad.md`.
@@ -128,12 +145,13 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 5. Última prueba exitosa
-- **Fecha y hora:** 2026-10-25 16:43:29 -05:00
+- **Fecha y hora:** 2026-10-25 19:31:34 -05:00
 - **Comando ejecutado:** `php artisan test`
-- **Resultado:** 77 pasadas, 0 fallidas (279 aserciones). Tiempo: 48.31s
+- **Resultado:** 102 pasadas, 0 fallidas (395 aserciones). Tiempo: 58.84s
   - `Tests\Unit\ExampleTest`: 1 pasada
   - `Tests\Feature\ExampleTest`: 1 pasada
-  - `Tests\Feature\MedicalEpisodeTest`: 12 pasadas
-  - `Tests\Feature\PhysicalResourcesAndStaffTest`: 10 pasadas
+  - `Tests\Feature\IdentityReconciliationTest`: 13 pasadas
+  - `Tests\Feature\MedicalEpisodeTest`: 15 pasadas
+  - `Tests\Feature\PhysicalResourcesAndStaffTest`: 14 pasadas
   - `Tests\Feature\PreregistrationTest`: 15 pasadas
   - `Tests\Feature\SecurityTest`: 38 pasadas

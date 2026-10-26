@@ -23,7 +23,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'personal.gestionar',
             'turnos.gestionar',
             'ocupacion.ver',
-            // Módulo médico (Fase 4)
+            // Módulo médico (Fase 4 y 4B)
             'episodios.ver',
             'episodios.llegada',
             'episodios.triage',
@@ -32,6 +32,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'episodios.egreso',
             'episodios.asignar_personal',
             'episodios.asignar_camilla',
+            'episodios.crear_nn',
+            'episodios.conciliar',
         ];
 
         foreach ($permissions as $name) {
@@ -50,6 +52,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'ocupacion.ver',
                 'episodios.ver',
                 'episodios.asignar_personal',
+                'episodios.crear_nn',
+                'episodios.conciliar',
             ],
             'coordinador' => [
                 'correos.ver',
@@ -64,6 +68,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'episodios.egreso',
                 'episodios.asignar_personal',
                 'episodios.asignar_camilla',
+                'episodios.crear_nn',
+                'episodios.conciliar',
             ],
             'medico' => [
                 'ocupacion.ver',
@@ -73,6 +79,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'episodios.atender',
                 'episodios.egreso',
                 'episodios.asignar_camilla',
+                'episodios.crear_nn',
+                'episodios.conciliar',
             ],
             'enfermero' => [
                 'ocupacion.ver',
@@ -82,11 +90,14 @@ class RolesAndPermissionsSeeder extends Seeder
                 'episodios.ingreso',
                 'episodios.atender',
                 'episodios.asignar_camilla',
+                'episodios.crear_nn',
             ],
             'admisiones' => [
                 'ocupacion.ver',
                 'episodios.ver',
                 'episodios.llegada',
+                'episodios.crear_nn',
+                'episodios.conciliar',
             ],
             'auditor' => [
                 'auditoria.ver',

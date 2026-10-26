@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Hospital\EmergencyNnController;
 use App\Http\Controllers\Hospital\MedicalEpisodeController;
 use App\Http\Controllers\Hospital\OccupancyController;
 use App\Http\Controllers\Hospital\PhysicalResourceController;
@@ -160,8 +161,17 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
         ->whereNumber('shift')
         ->name('shifts.end');
 
-    // Módulo médico de urgencias (Fase 4)
+    // Módulo médico de urgencias (Fase 4 y Fase 4B)
     Route::get('/episodios', [MedicalEpisodeController::class, 'index'])->name('episodes.index');
+    Route::get('/episodios/registro-nn', [EmergencyNnController::class, 'create'])->name('episodes.nn.create');
+    Route::post('/episodios/registro-nn', [EmergencyNnController::class, 'store'])->name('episodes.nn.store');
+    Route::get('/episodios/pacientes/buscar', [EmergencyNnController::class, 'searchPatient'])->name('episodes.patient.search');
+    Route::get('/episodios/{episode}/conciliar', [EmergencyNnController::class, 'showReconcileForm'])
+        ->whereUuid('episode')
+        ->name('episodes.reconcile.create');
+    Route::post('/episodios/{episode}/conciliar', [EmergencyNnController::class, 'reconcile'])
+        ->whereUuid('episode')
+        ->name('episodes.reconcile.store');
     Route::get('/episodios/{episode}', [MedicalEpisodeController::class, 'show'])
         ->whereUuid('episode')
         ->name('episodes.show');
