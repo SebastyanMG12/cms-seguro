@@ -49,6 +49,17 @@
     </div>
 @endif
 
+@if (!empty($exceptionalReason))
+    <div class="alert alert-warning border border-warning d-flex align-items-center mb-3 py-2 px-3 shadow-sm" role="alert">
+        <i class="bi bi-shield-exclamation fs-4 me-2 text-warning-emphasis" aria-hidden="true"></i>
+        <div class="small">
+            <strong>Acceso Excepcional Registrado:</strong> Usted está consultando esta historia clínica bajo la causal:
+            <span class="fst-italic fw-bold text-dark">"{{ $exceptionalReason }}"</span>.
+            Todo acceso queda auditado de manera inmutable de conformidad con la Ley 1581 de 2012 y la Res. 1995 de 1999.
+        </div>
+    </div>
+@endif
+
 @if ($errors->any())
     <div class="alert alert-danger py-2" role="alert">
         <ul class="mb-0 small">
@@ -151,10 +162,16 @@
 
             {{-- 4. Asignar Camilla (Solo disponible cuando el paciente está ingresado) --}}
             @if ($episode->status === 'ingresado')
-                @can('episodios.asignar_camilla')
+                @can('assignBed', $episode)
                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bedModal">
                         <i class="bi bi-hospital me-1" aria-hidden="true"></i> {{ $episode->activeBedAssignment ? 'Cambiar Camilla' : 'Asignar Camilla' }}
                     </button>
+                @else
+                    <span class="action-disabled-wrapper" title="Solo el personal asistencial asignado o la coordinación pueden gestionar la camilla.">
+                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                            <i class="bi bi-hospital me-1" aria-hidden="true"></i> {{ $episode->activeBedAssignment ? 'Cambiar Camilla' : 'Asignar Camilla' }}
+                        </button>
+                    </span>
                 @endcan
             @else
                 <span class="action-disabled-wrapper" title="Solo se puede asignar camilla a pacientes ingresados.">
@@ -175,10 +192,16 @@
 
             {{-- 6. Registrar Egreso (Solo si está ingresado) --}}
             @if ($episode->status === 'ingresado')
-                @can('episodios.egreso')
+                @can('discharge', $episode)
                     <button type="button" class="btn btn-sm btn-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#dischargeModal">
                         <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Registrar Egreso
                     </button>
+                @else
+                    <span class="action-disabled-wrapper" title="Solo el médico responsable asignado o la coordinación médica pueden dar el egreso al paciente.">
+                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                            <i class="bi bi-lock me-1" aria-hidden="true"></i> Registrar Egreso
+                        </button>
+                    </span>
                 @endcan
             @else
                 <span class="action-disabled-wrapper" title="Solo se puede egresar un paciente en estado ingresado.">
@@ -373,10 +396,16 @@
             <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
                 <h2 class="h6 mb-0 fw-bold text-dark"><i class="bi bi-journal-medical me-1" aria-hidden="true"></i>Evolución y Entradas Clínicas (Inmutables)</h2>
                 @if (in_array($episode->status, ['en_valoracion', 'ingresado']))
-                    @can('episodios.atender')
+                    @can('addClinicalEntry', $episode)
                         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#entryModal">
                             <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Registrar Entrada Clínica
                         </button>
+                    @else
+                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Solo el personal asistencial asignado a este paciente o la coordinación médica pueden registrar evoluciones clínicas.">
+                            <button class="btn btn-sm btn-outline-secondary" disabled>
+                                <i class="bi bi-lock me-1" aria-hidden="true"></i> Registrar Entrada Clínica
+                            </button>
+                        </span>
                     @endcan
                 @elseif ($episode->isOpen())
                     <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="El paciente debe encontrarse en valoración o ingresado para registrar notas clínicas o diagnósticos.">
@@ -386,10 +415,16 @@
                     </span>
                 @else
                     {{-- Si el episodio está cerrado, la única acción admitida es aclaración posterior --}}
-                    @can('episodios.atender')
+                    @can('addClinicalEntry', $episode)
                         <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#clarificationModal">
                             <i class="bi bi-pencil-square me-1" aria-hidden="true"></i> Agregar Aclaración Posterior
                         </button>
+                    @else
+                        <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Solo el personal asistencial asignado o la coordinación pueden agregar aclaraciones.">
+                            <button class="btn btn-sm btn-outline-secondary" disabled>
+                                <i class="bi bi-lock me-1" aria-hidden="true"></i> Agregar Aclaración Posterior
+                            </button>
+                        </span>
                     @endcan
                 @endif
             </div>

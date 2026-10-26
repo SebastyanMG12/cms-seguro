@@ -299,7 +299,9 @@ class MedicalEpisodeTest extends TestCase
 
     public function test_medical_record_read_audit(): void
     {
-        // El médico visualiza la historia clínica
+        // El médico asignado visualiza la historia clínica directamente
+        $this->episode->update(['responsible_user_id' => $this->doctor->id]);
+
         $response = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
         $response->assertStatus(200);
 
@@ -312,7 +314,7 @@ class MedicalEpisodeTest extends TestCase
 
     public function test_exceptional_access_read_audit(): void
     {
-        // Acceso excepcional con motivo
+        // Acceso excepcional con motivo (médico no asignado)
         $response = $this->actingAs($this->doctor)->get(route('episodes.show', [
             'episode' => $this->episode,
             'exceptional_reason' => 'Consulta urgente por relevo no programado',
@@ -324,6 +326,41 @@ class MedicalEpisodeTest extends TestCase
             'user_id' => $this->doctor->id,
             'model_id' => $this->episode->id,
         ]);
+    }
+
+    public function test_unassigned_doctor_without_reason_receives_break_glass_challenge(): void
+    {
+        // El médico NO está asignado y no envía motivo de justificación
+        $response = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
+        $response->assertStatus(200);
+
+        // Debe renderizar la pantalla de control de acceso / Break-Glass
+        $response->assertSee('Control de Custodia de Historia Clínica');
+        $response->assertSee('Acceso Excepcional Requerido');
+        $response->assertSee('ADVERTENCIA MÉDICO-LEGAL');
+        $response->assertDontSee('Evolución y Entradas Clínicas (Inmutables)');
+    }
+
+    public function test_unassigned_doctor_cannot_add_clinical_entry_or_discharge(): void
+    {
+        // Episodio en estado ingresado asignado a la enfermera (el médico no está asignado)
+        $this->episode->update([
+            'status' => 'ingresado',
+            'responsible_user_id' => $this->nurse->id,
+        ]);
+
+        // Intento de agregar evolución clínica por médico no asignado (403 Forbidden)
+        $resEntry = $this->actingAs($this->doctor)->post(route('episodes.entries.store', $this->episode), [
+            'type' => 'diagnostico',
+            'content' => 'Intento de diagnóstico por médico no asignado',
+        ]);
+        $resEntry->assertStatus(403);
+
+        // Intento de egreso por médico no asignado (403 Forbidden)
+        $resDischarge = $this->actingAs($this->doctor)->post(route('episodes.discharge', $this->episode), [
+            'discharge_type' => 'alta_medica',
+        ]);
+        $resDischarge->assertStatus(403);
     }
 
     public function test_role_authorization_for_clinical_actions(): void
@@ -347,6 +384,9 @@ class MedicalEpisodeTest extends TestCase
         $resTriageNurse->assertRedirect();
         $this->episode->refresh();
         $this->assertEquals('en_valoracion', $this->episode->status);
+
+        // Asignar al médico como tratante responsable
+        $this->episode->update(['responsible_user_id' => $this->doctor->id]);
 
         // 4. Médico confirma ingreso y agrega evolución
         $this->actingAs($this->doctor)->post(route('episodes.admission', $this->episode));

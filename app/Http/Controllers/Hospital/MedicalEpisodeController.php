@@ -87,9 +87,29 @@ class MedicalEpisodeController extends Controller
     {
         Gate::authorize('view', $episode);
 
-        // Registro obligatorio de auditoría de lectura (quién, cuándo, qué episodio)
-        $exceptionalReason = $request->query('exceptional_reason');
-        $clinicalService->recordMedicalRecordRead($episode, auth()->user(), $exceptionalReason);
+        $user = auth()->user();
+        $isAssigned = $episode->isAssignedUser($user);
+        $isSupervisor = $user->hasAnyRole(['coordinador', 'administrador', 'auditor']);
+
+        $exceptionalReason = $request->query('exceptional_reason') ?? session("exceptional_access_{$episode->id}");
+
+        // Si el usuario no está asignado ni es supervisor institucional, debe justificar acceso excepcional (Break-Glass)
+        if (! $isAssigned && ! $isSupervisor) {
+            if (empty($exceptionalReason) || mb_strlen(trim($exceptionalReason)) < 10) {
+                return view('episodes.break_glass', [
+                    'episode' => $episode,
+                ]);
+            }
+
+            session()->put("exceptional_access_{$episode->id}", $exceptionalReason);
+        }
+
+        // Registro obligatorio de auditoría de lectura
+        $clinicalService->recordMedicalRecordRead(
+            $episode,
+            $user,
+            (! $isAssigned && ! $isSupervisor) ? $exceptionalReason : null
+        );
 
         $episode->load([
             'patient',
@@ -117,6 +137,8 @@ class MedicalEpisodeController extends Controller
             'episode' => $episode,
             'availableBeds' => $availableBeds,
             'availableStaff' => $availableStaff,
+            'exceptionalReason' => (! $isAssigned && ! $isSupervisor) ? $exceptionalReason : null,
+            'isAssigned' => $isAssigned,
         ]);
     }
 

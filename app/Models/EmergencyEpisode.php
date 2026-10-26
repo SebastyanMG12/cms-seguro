@@ -144,6 +144,19 @@ class EmergencyEpisode extends Model
         return (bool) ($this->is_nn && ! is_null($this->reconciled_at));
     }
 
+    public function isAssignedUser(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($this->responsible_user_id === $user->id) {
+            return true;
+        }
+
+        return $this->activeAssignments()->where('user_id', $user->id)->exists();
+    }
+
     /**
      * Generate sequential NN identifier (format: NN-AAAAMMDD-XXXX)
      */

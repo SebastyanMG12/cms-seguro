@@ -34,16 +34,30 @@ class EmergencyEpisodePolicy
 
     public function addClinicalEntry(User $user, EmergencyEpisode $episode): bool
     {
-        if (in_array($episode->status, ['egresado', 'expirado'], true)) {
-            return $user->can('episodios.atender') && request()->input('type') === 'aclaracion';
+        if (! $user->can('episodios.atender')) {
+            return false;
         }
 
-        return $user->can('episodios.atender') && in_array($episode->status, ['en_valoracion', 'ingresado'], true);
+        // Si es médico o enfermero, debe estar asignado activamente o ser coordinador/administrador
+        if (! $episode->isAssignedUser($user) && ! $user->hasAnyRole(['coordinador', 'administrador'])) {
+            return false;
+        }
+
+        if (in_array($episode->status, ['egresado', 'expirado'], true)) {
+            return request()->input('type') === 'aclaracion';
+        }
+
+        return in_array($episode->status, ['en_valoracion', 'ingresado'], true);
     }
 
     public function discharge(User $user, EmergencyEpisode $episode): bool
     {
-        return $user->can('episodios.egreso') && $episode->status === 'ingresado';
+        if (! $user->can('episodios.egreso') || $episode->status !== 'ingresado') {
+            return false;
+        }
+
+        // Solo el médico responsable asignado o la coordinación médica pueden dar el egreso
+        return $episode->responsible_user_id === $user->id || $user->hasAnyRole(['coordinador', 'administrador']);
     }
 
     public function assignStaff(User $user, EmergencyEpisode $episode): bool
@@ -53,7 +67,11 @@ class EmergencyEpisodePolicy
 
     public function assignBed(User $user, EmergencyEpisode $episode): bool
     {
-        return $user->can('episodios.asignar_camilla') && $episode->status === 'ingresado';
+        if (! $user->can('episodios.asignar_camilla') || $episode->status !== 'ingresado') {
+            return false;
+        }
+
+        return $episode->isAssignedUser($user) || $user->hasAnyRole(['coordinador', 'administrador']);
     }
 
     public function updateCompanion(User $user, EmergencyEpisode $episode): bool
