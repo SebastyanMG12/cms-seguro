@@ -10,7 +10,7 @@
                 <i class="bi bi-shield-exclamation fs-3 me-3 text-warning-emphasis" aria-hidden="true"></i>
                 <div>
                     <h1 class="h5 mb-0 fw-bold">Control de Custodia de Historia Clínica</h1>
-                    <small class="text-muted">Acceso Excepcional Requerido — Ley 1581 de 2012 / Res. 1995 de 1999</small>
+                    <small class="text-muted">Acceso Excepcional Requerido - Ley 1581 de 2012 / Res. 1995 de 1999</small>
                 </div>
             </div>
             <div class="card-body p-4">
@@ -102,7 +102,7 @@
                 </form>
             </div>
             <div class="card-footer bg-light py-2 px-4 text-muted small text-center">
-                Hospital de Ubaté — Sistema Seguro de Urgencias. Todo intento de acceso es trazable y peritable.
+                Hospital de Ubaté - Sistema Seguro de Urgencias. Todo intento de acceso es trazable y peritable.
             </div>
         </div>
     </div>

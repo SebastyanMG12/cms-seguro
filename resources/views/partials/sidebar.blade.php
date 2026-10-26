@@ -18,6 +18,13 @@
         </a>
     @endcan
 
+    @can('reportes.ver')
+        <a href="{{ route('reports.index') }}"
+            class="list-group-item list-group-item-action {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+            <i class="bi bi-graph-up-arrow me-1" aria-hidden="true"></i> Reportes y Triage
+        </a>
+    @endcan
+
     @can('personal.gestionar')
         <a href="{{ route('staff.index') }}"
             class="list-group-item list-group-item-action {{ request()->routeIs('staff.*') ? 'active' : '' }}">
@@ -52,6 +59,11 @@
             <i class="bi bi-journal-text me-1" aria-hidden="true"></i> Publicaciones
         </a>
     @endhasrole
+
+    <a href="{{ route('documentation') }}"
+        class="list-group-item list-group-item-action {{ request()->routeIs('documentation') ? 'active' : '' }}">
+        <i class="bi bi-journal-code me-1" aria-hidden="true"></i> Manual y Seguridad
+    </a>
 
     <a href="{{ route('two-factor.show') }}"
         class="list-group-item list-group-item-action {{ request()->routeIs('two-factor.*') ? 'active' : '' }}">

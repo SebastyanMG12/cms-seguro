@@ -350,4 +350,120 @@ class CompanionTrackingTest extends TestCase
         $resLogout->assertRedirect(route('companion.login'));
         $this->assertFalse(session()->has('companion_episode_id'));
     }
+
+    public function test_companion_can_authenticate_using_patient_last_4_document_digits_by_default(): void
+    {
+        // Patient document is 1025888999 -> Default PIN is '8999'
+        $this->assertEquals('8999', $this->episode->getDefaultCompanionPin());
+        $this->assertEquals('8999', $this->episode->getCompanionPin());
+        $this->assertStringContainsString('1025888999', $this->episode->getCompanionPinSourceDescription());
+
+        // Companion enters public_code and last 4 digits of document
+        $response = $this->post(route('companion.auth'), [
+            'public_code' => 'UBTTEST1',
+            'pin' => '8999',
+        ]);
+
+        $response->assertRedirect(route('companion.status'));
+        $this->assertEquals($this->episode->id, session('companion_episode_id'));
+
+        $statusResponse = $this->get(route('companion.status'));
+        $statusResponse->assertStatus(200);
+        $statusResponse->assertSee('Carlos A.');
+    }
+
+    public function test_doctor_and_admin_see_companion_credentials_in_show_view(): void
+    {
+        // Doctor views episode
+        $resDoctor = $this->actingAs($this->doctor)
+            ->withSession(['two_factor_authenticated' => true])
+            ->get(route('episodes.show', $this->episode));
+
+        $resDoctor->assertStatus(200);
+        $resDoctor->assertSee('Credenciales de Consulta Web');
+        $resDoctor->assertSee('UBTTEST1');
+        $resDoctor->assertSee('8999');
+        $resDoctor->assertSee('Últimos 4 dígitos del documento');
+
+        // Admin views episode
+        $adminRole = Role::firstOrCreate(['name' => 'administrador']);
+        $adminRole->givePermissionTo('episodios.ver');
+        $admin = User::factory()->create(['status' => 'active', 'two_factor_confirmed_at' => now()]);
+        $admin->assignRole('administrador');
+
+        $resAdmin = $this->actingAs($admin)
+            ->withSession(['two_factor_authenticated' => true])
+            ->get(route('episodes.show', $this->episode));
+
+        $resAdmin->assertStatus(200);
+        $resAdmin->assertSee('Credenciales de Consulta Web');
+        $resAdmin->assertSee('8999');
+    }
+
+    public function test_doctor_can_reset_pin_to_document_digits_or_generate_random_6_digit_pin(): void
+    {
+        // 1. Generate 6-digit random PIN
+        $resRandom = $this->actingAs($this->doctor)
+            ->withSession(['two_factor_authenticated' => true])
+            ->post(route('episodes.companion.pin', $this->episode), [
+                'mode' => 'random',
+            ]);
+
+        $resRandom->assertRedirect(route('episodes.show', $this->episode));
+        $generatedPin = session('generated_pin');
+        $this->assertMatchesRegularExpression('/^[0-9]{6}$/', $generatedPin);
+
+        $this->episode->refresh();
+        $this->assertEquals($generatedPin, $this->episode->getCompanionPin());
+        $this->assertEquals('PIN asignado en hospital', $this->episode->getCompanionPinSourceDescription());
+
+        // 2. Reset PIN to document digits
+        $resReset = $this->actingAs($this->doctor)
+            ->withSession(['two_factor_authenticated' => true])
+            ->post(route('episodes.companion.pin', $this->episode), [
+                'mode' => 'default',
+            ]);
+
+        $resReset->assertRedirect(route('episodes.show', $this->episode));
+        $this->episode->refresh();
+        $this->assertEquals('8999', $this->episode->getCompanionPin());
+        $this->assertStringContainsString('1025888999', $this->episode->getCompanionPinSourceDescription());
+    }
+
+    public function test_unassigned_doctor_cannot_manage_companion_pin_or_consent(): void
+    {
+        $otherDoctor = User::factory()->create(['status' => 'active', 'two_factor_confirmed_at' => now()]);
+        $otherDoctor->assignRole('medico');
+        StaffProfile::create([
+            'user_id' => $otherDoctor->id,
+            'code' => 'MED-OTHER01',
+            'specialty' => 'Medicina Interna',
+            'status' => 'activo',
+        ]);
+
+        // Attempting to generate PIN without assignment fails with 403
+        $resPin = $this->actingAs($otherDoctor)
+            ->withSession(['two_factor_authenticated' => true])
+            ->post(route('episodes.companion.pin', $this->episode), [
+                'mode' => 'random',
+            ]);
+        $resPin->assertStatus(403);
+
+        // Attempting to toggle clinical consent without assignment fails with 403
+        $resConsent = $this->actingAs($otherDoctor)
+            ->withSession(['two_factor_authenticated' => true])
+            ->post(route('episodes.companion.consent', $this->episode), [
+                'enable' => '1',
+            ]);
+        $resConsent->assertStatus(403);
+
+        // Assigned doctor CAN toggle clinical consent
+        $resAssignedConsent = $this->actingAs($this->doctor)
+            ->withSession(['two_factor_authenticated' => true])
+            ->post(route('episodes.companion.consent', $this->episode), [
+                'enable' => '1',
+            ]);
+        $resAssignedConsent->assertRedirect(route('episodes.show', $this->episode));
+        $this->assertTrue($this->episode->fresh()->hasActiveCompanionConsent());
+    }
 }

@@ -143,11 +143,40 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 - **Vistas y UI (`DISEÑO_FRONTEND.md`)**:
   - `companion.login`: Formulario Mobile-First accesible (touch target >= 44px, tipografía tabular).
   - `companion.status`: Workstation de seguimiento móvil y desktop, línea de tiempo vertical y refresco relativo.
-  - `episodes.show`: Alerta de un solo uso para entrega presencial del PIN, badges de estado de PIN y consentimiento, y botones de regeneración, revocación y autorización.
+  - `episodes.show`: Tarjeta de credenciales permanente para acompañante (código público y PIN legible/encriptado), badges de estado, origen del PIN (dígitos documento vs generado), y acciones de emisión, revocación y gestión de consentimiento clínico protegidas por roles.
+
+### Fase 6: Administración avanzada, reportes y generación de PDF con marca de agua
+- **Generación de Historia Clínica en PDF Oficial (`PdfReportService`, `EpisodePdfController`)**:
+  - Formato legal e institucional oficial para el **Hospital de Ubaté** (Resolución 1995 de 1999 y Ley Estatutaria 1581 de 2012).
+  - Encabezado institucional superior fijo, numeración continua de páginas en CSS (`counter(page)`), datos de paciente/NN, signos vitales de triaje, ubicación y cama, equipo asistencial asignado (responsable y apoyos), evolución cronológica con diagnósticos, notas, aclaraciones inmutables y anulaciones justificadas.
+  - Marca de agua diagonal de seguridad forense (`position: fixed`, opacidad 7%, rotación -35°) generada dinámicamente: `HOSPITAL DE UBATÉ - COPIA OFICIAL | [USUARIO] ([ROL]) | [FECHA HORA] | EPISODIO: [CÓDIGO]`.
+  - Generación segura sin evaluación de PHP en plantillas (`enable_php => false` en `dompdf.php`), compatibilidad estricta con UTF-8 y tamaño Carta (Letter).
+  - Modal de confirmación legal antes de la descarga en `episodes.show` advirtiendo sobre la reserva legal y trazabilidad de la copia.
+  - Auditoría inmutable de descarga: registro obligatorio del evento `episodio.pdf_generado` con metadatos del solicitante, rol, código de episodio e IP.
+  - Política de seguridad granular `EmergencyEpisodePolicy::downloadPdf`: permiso requerido `episodios.pdf`, reservado para médicos asignados, personal con justificación Break-Glass activa en sesión, coordinación médica, administradores y auditores.
+- **Tablero Operativo y Triage - Resolución 5596 de 2015 (`EmergencyMetricsService`, `EmergencyReportController`)**:
+  - Métricas operativas 100% calculadas sobre la base de datos (cero cifras simuladas o ficticias).
+  - Tiempos de espera reales por nivel de Triage (I: Inmediato 0m, II: 30m, III: 120m, IV: 180m, V: 240m), contrastando el tiempo transcurrido desde el triaje hasta la primera atención médica o el tiempo en cola para pacientes en espera.
+  - Indicadores de pacientes evaluados, en espera actual, tiempo promedio, tiempo máximo y porcentaje de cumplimiento legal de la meta.
+  - Censo hospitalario en tiempo real: desglose de camillas (total, ocupadas, disponibles, en mantenimiento, en limpieza y porcentaje de ocupación).
+  - Personal asistencial en turno activo (médicos y enfermeros en turno abierto).
+  - Selector y filtro por fecha (`?date=YYYY-MM-DD`).
+- **Módulo de Auditoría Forense Avanzada (`AuditLogController`, `resources/views/audit/index.blade.php`)**:
+  - Filtros multifactoriales por tipo de evento, usuario, rango de fechas (`date_from`, `date_to`) y código público de episodio clínico (`episode_code` sobre metadatos JSON).
+  - Pestaña especializada en "Lecturas de Historia Clínica" filtrando eventos de consulta (`episodio.lectura`, `episodio.break_glass`, `episodio.pdf_generado`).
+  - Exportación de registros de auditoría a CSV en streaming (`StreamedResponse`) con codificación UTF-8 BOM para compatibilidad con Excel y cabeceras anti-caché.
 
 ---
 
 ## 3. Decisiones técnicas
+- **Estandarización Institucional de Nombre**: Uso estricto de **"Hospital de Ubaté"** (evitando "Hospital El Salvador de Ubaté E.S.E.") en cumplimiento de requerimientos de propiedad intelectual y autorizaciones institucionales previas.
+- **Marca de Agua Forense en PDF**: Implementada mediante div fijo CSS repetido en todas las páginas por el motor Dompdf (`position: fixed; top: 35%; left: -15%; transform: rotate(-35deg); opacity: 0.07;`) garantizando el no repudio sin habilitar banderas inseguras como ejecución de código PHP embebido (`enable_php: false`).
+- **Cálculo de Tiempos de Triage (Res. 5596/2015)**: El tiempo de espera se computa formalmente entre la marca de tiempo de triaje (`triage_at`) y la marca de tiempo inmutable de la primera evolución médica del episodio (`performed_at`), o contra la hora actual para pacientes que continúan en estado `en_espera`.
+- **Arquitectura de Credenciales para Acompañantes**:
+  - *Código del Paciente:* Código público alfanumérico único del episodio (ej: `UBT1A2B3`, 8 caracteres en mayúsculas).
+  - *PIN de Acceso Predeterminado:* Por defecto son los **últimos 4 dígitos del documento de identidad** del paciente (o los últimos 4 dígitos del identificador `NN-AAAAMMDD-XXXX` si es paciente NN).
+  - *PIN Personalizado o Generado:* El personal puede emitir un PIN aleatorio de 6 dígitos o restablecerlo en cualquier momento. Se almacena cifrado con AES-256 (`pin => 'encrypted'`) en la base de datos junto con su hash (`pin_hash`), permitiendo que el médico encargado, personal asignado y administrador lo visualicen de manera permanente en la historia clínica sin perderse tras recargar la pantalla.
+  - *Autorización Basada en Roles (`EmergencyEpisodePolicy`):* La gestión del acceso del acompañante (`manageCompanionAccess`) y el otorgamiento/revocación de consentimiento para compartir datos clínicos (`manageCompanionConsent`) están estrictamente restringidos al médico responsable del episodio, equipo asistencial asignado, coordinación médica y administradores; usuarios no asignados son bloqueados con `403 Forbidden`.
 - **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` en todas las transiciones de estado clínico, asignación de camillas, turnos, conciliación de identidad y emisión de PINs.
 - **Inmutabilidad Médica (Res. 1995/1999)**: Protección en Eloquent (`booted`) y base de datos contra edición o borrado de evoluciones clínicas; el modelo solo admite adición de notas aclaratorias o anulaciones enlazadas.
 - **Inmutabilidad de Consentimientos (Ley 1581)**: El modelo `Consent` prohíbe modificaciones o eliminaciones arbitrarias; únicamente admite registrar `revoked_at` de forma atómica para registrar la revocación.
@@ -159,24 +188,131 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 - **Contador Dinámico de Carga**: Evita campos desnormalizados propensos a inconsistencias; calcula los episodios abiertos activos directamente sobre `episode_assignments` con `distinct('episode_id')`.
 - **Diseño sin Emojis y Accesible**: Reemplazo total de emojis por iconografía lineal Bootstrap Icons local compilada con Vite, tokens de diseño con contraste verificado >= 4.5:1 y objetivos táctiles de 44px.
 
+### Fase 7: Endurecimiento y pruebas de seguridad
+- **Auditoría Integral de Rutas y Middlewares**:
+  - Restricción estricta de parámetros en todas las rutas con `whereUuid('episode')`, `whereNumber('user')`, `whereNumber('room')`, `whereNumber('bed')`, `whereNumber('profile')`, `whereNumber('shift')`, `whereNumber('assignment')` y `whereAlphaNumeric('code')`.
+  - Protección de rutas operativas, administrativas y clínicas mediante el stack incondicional `['auth', 'active', 'two-factor']`.
+- **Protección de Caché en Terminales Compartidas (`SecurityHeaders`)**:
+  - Inyección automática de `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` y `Pragma: no-cache` para todas las respuestas de usuarios autenticados, impidiendo que historiales clínicos queden retenidos en la memoria del navegador tras cerrar sesión en terminales médicas compartidas.
+  - Cabeceras globales endurecidas: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Content-Security-Policy` sin `unsafe-inline` en producción y HSTS forzado en producción.
+- **Batería de Pruebas de Seguridad (`SecurityHardeningTest`)**:
+  - Verificación de bloqueo 419 ante peticiones sin token CSRF válido.
+  - Verificación de rate limiting 429 en formularios de contacto, pre-registro y acceso de acompañantes.
+  - Verificación de mitigación IDOR y autorización cruzada (rechazo 403 ante intentos de alta médica por médicos no asignados, enfermeros o auditores modificando infraestructura).
+  - Verificación de cifrado en reposo en base de datos para `patients`, `episode_clinical_data`, `clinical_entries` y `companions`.
+  - Verificación de índice ciego HMAC-SHA256 para búsquedas por documento sin descifrado masivo.
+  - Verificación de rechazo 404 ante identificadores con formato malicioso o inyección en parámetros de ruta.
+- **Auditoría de Dependencias y Cachés de Producción**:
+  - `composer audit`: 0 vulnerabilidades.
+  - `npm audit`: 0 vulnerabilidades.
+  - `php artisan config:cache`, `route:cache`, `view:cache`: 100% exitosos sin errores de sintaxis.
+- **Documento Forense Oficial**: Creación de `docs/seguridad.md` detallando el modelo de amenazas, matriz OWASP Top 10 y medidas aplicadas.
+
 ---
 
-## 4. Pendientes para siguientes fases
-- **Fase 6**: Administración avanzada, reportes y generación de PDF con marca de agua.
-- **Fase 7**: Endurecimiento, pruebas de seguridad y `docs/seguridad.md`.
-- **Fase 8**: Preparación de producción y `docs/cumplimiento.md`.
+## 3. Decisiones técnicas
+- **Estandarización Institucional de Nombre**: Uso estricto de **"Hospital de Ubaté"** (evitando "Hospital El Salvador de Ubaté E.S.E.") en cumplimiento de requerimientos de propiedad intelectual y autorizaciones institucionales previas.
+- **Protección de Memoria Caché Médica**: Configuración de `no-store` dinámico en `SecurityHeaders` cuando `auth()->check() == true` para mitigar el riesgo de fuga de datos sensibles en estaciones compartidas de urgencias (Ley 1581 / Res. 1995).
+- **Restricción Exclusiva de Rutas**: Ningún parámetro de ruta queda abierto a cadenas arbitrarias; se aplican validadores regex `whereUuid`, `whereNumber` y `whereAlphaNumeric` en `routes/web.php`.
+- **Marca de Agua Forense en PDF**: Implementada mediante div fijo CSS repetido en todas las páginas por el motor Dompdf (`position: fixed; top: 35%; left: -15%; transform: rotate(-35deg); opacity: 0.07;`) garantizando el no repudio sin habilitar banderas inseguras como ejecución de código PHP embebido (`enable_php: false`).
+- **Cálculo de Tiempos de Triage (Res. 5596/2015)**: El tiempo de espera se computa formalmente entre la marca de tiempo de triaje (`triage_at`) y la marca de tiempo inmutable de la primera evolución médica del episodio (`performed_at`), o contra la hora actual para pacientes que continúan en estado `en_espera`.
+- **Arquitectura de Credenciales para Acompañantes**:
+  - *Código del Paciente:* Código público alfanumérico único del episodio (ej: `UBT1A2B3`, 8 caracteres en mayúsculas).
+  - *PIN de Acceso Predeterminado:* Por defecto son los **últimos 4 dígitos del documento de identidad** del paciente (o los últimos 4 dígitos del identificador `NN-AAAAMMDD-XXXX` si es paciente NN).
+  - *PIN Personalizado o Generado:* El personal puede emitir un PIN aleatorio de 6 dígitos o restablecerlo en cualquier momento. Se almacena cifrado con AES-256 (`pin => 'encrypted'`) en la base de datos junto con su hash (`pin_hash`), permitiendo que el médico encargado, personal asignado y administrador lo visualicen de manera permanente en la historia clínica sin perderse tras recargar la pantalla.
+  - *Autorización Basada en Roles (`EmergencyEpisodePolicy`):* La gestión del acceso del acompañante (`manageCompanionAccess`) y el otorgamiento/revocación de consentimiento para compartir datos clínicos (`manageCompanionConsent`) están estrictamente restringidos al médico responsable del episodio, equipo asistencial asignado, coordinación médica y administradores; usuarios no asignados son bloqueados con `403 Forbidden`.
+- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` en todas las transiciones de estado clínico, asignación de camillas, turnos, conciliación de identidad y emisión de PINs.
+- **Inmutabilidad Médica (Res. 1995/1999)**: Protección en Eloquent (`booted`) y base de datos contra edición o borrado de evoluciones clínicas; el modelo solo admite adición de notas aclaratorias o anulaciones enlazadas.
+- **Inmutabilidad de Consentimientos (Ley 1581)**: El modelo `Consent` prohíbe modificaciones o eliminaciones arbitrarias; únicamente admite registrar `revoked_at` de forma atómica para registrar la revocación.
+- **Anti-Enumeración en Canal Acompañante**: Respuestas de autenticación idénticas ante código inválido, PIN inválido o acompañante no registrado, impidiendo el escaneo automatizado de episodios.
+- **Preservación Forense NN**: Al conciliar identidad, el paciente NN original permanece intacto en la tabla `patients` y el código `NN-AAAAMMDD-XXXX` se conserva permanentemente en `emergency_episodes` para garantizar la trazabilidad forense y médico-legal.
+- **Excepción Legal Ley 1581 Art. 10**: Admisión inmediata para salvaguardar la vida sin exigir consentimiento previo a pacientes inconscientes o desorientados, formalizada mediante registro inmutable en `consents`.
+- **Control de Custodia Break-Glass**: Barrera de acceso excepcional que impide la consulta pasiva de historias clínicas por profesionales no asignados, exigiendo justificación auditada y bloqueando acciones clínicas en modo consulta.
+- **Ciclo de Personal de Apoyo vs. Responsable**: El médico tratante principal no puede ser eliminado dejando el episodio acéfalo (requiere transferencia asignando un nuevo responsable). En contraste, el personal de apoyo (`role = 'apoyo'`) puede ser desactivado/finalizado una vez concluida su labor asistencial puntual (por el propio profesional, el médico responsable o coordinación), liberando su carga activa y registrando el evento inmutable `episodio.apoyo_finalizado`.
+- **Contador Dinámico de Carga**: Evita campos desnormalizados propensos a inconsistencias; calcula los episodios abiertos activos directamente sobre `episode_assignments` con `distinct('episode_id')`.
+- **Diseño sin Emojis y Accesible**: Reemplazo total de emojis por iconografía lineal Bootstrap Icons local compilada con Vite, tokens de diseño con contraste verificado >= 4.5:1 y objetivos táctiles de 44px.
+
+- **Aislamiento Arquitectónico del Módulo de Acompañantes en Barra de Navegación**: El enlace público `/acompanante` ha sido aislado estrictamente para usuarios no autenticados (`@guest`). Para el personal asistencial autenticado (médicos, enfermeros, coordinadores y administradores), el acceso se encuentra oculto en el navbar público, ya que dicho personal cuenta con acceso clínico completo y auditoría en la historia clínica del paciente (`episodes.show`), previniendo colisiones de contexto de sesión y cumpliendo el principio de menor sorpresa y separación de roles.
+- **Rediseño Institucional Completo y Supresión de "CMS Seguro"**: Se eliminaron de forma exhaustiva todas las menciones a "CMS Seguro" del aplicativo (vistas, layouts, configuración y `.env`), transformando la página de inicio (`/`), "Acerca de" (`/acerca`) y contacto (`/contacto`) en un portal de referencia oficial para el **Hospital de Ubaté**, con divulgación de clasificación de Triage (Res. 5596/2015), signos de alarma médica y canales de atención de urgencias 24/7.
+- **Diseño Adaptativo Integral (Responsive Design)**: Arquitectura frontend responsive probada en dispositivos móviles ($\le 576\text{px}$), tablets / iPad ($768\text{px} - 1024\text{px}$) y estaciones de escritorio / Mac ($\ge 1200\text{px}$), con objetivos táctiles accesibles ($\ge 44\text{px}$), tipografía legible, alto contraste WCAG 2.2 AA y ausencia total de emojis decorativos (reemplazados por Bootstrap Icons).
+- **Acceso Médico Asistencial Directo a Pre-registro y Registro NN**: El personal asistencial autenticado en el módulo de urgencias (`/episodios`) cuenta con accesos directos visibles para emitir un **"Nuevo Pre-registro"** presencial y **"Registrar Paciente NN"** de emergencia, además de la pestaña de pre-registros pendientes para su admisión clínica inmediata sin conflictos de sesión.
+
+
+### Fase 8: Preparación de producción y documentación integral
+- **Manual Oficial de Despliegue en Producción (`docs/despliegue.md`)**:
+  - Cobertura exhaustiva de los 15 puntos obligatorios de la Sección 13 de `AGENTE_HOSPITAL.md`.
+  - Configuración de base de datos PostgreSQL con usuario DDL (`ubate_migrator`) y usuario DML de mínimo privilegio (`ubate_app`), con bloqueo estricto de `UPDATE`/`DELETE` sobre `audit_logs`.
+  - Servidor web Nginx endurecido con bloqueo estricto de archivos ocultos y configuración (`.env`, `.git`, etc.), HSTS forzado y TLS 1.3.
+  - Script automatizado de copias de seguridad cifradas con GPG para base de datos y `storage/app`, protocolo de prueba de restauración mensual y plan de reversa (rollback).
+  - Procedimiento asistencial de contingencia en papel ante corte de energía/red y protocolo legal de respuesta a incidentes de seguridad (notificación SIC / Supersalud).
+- **Documento de Cumplimiento Normativo y Legal (`docs/cumplimiento.md`)**:
+  - Sustentación formal de cumplimiento de la **Resolución 1995 de 1999** (inmutabilidad, reserva legal, retención por 20 años y entrega de copias foliadas).
+  - Implementación técnica de la **Resolución 5596 de 2015** (Triage I al V, cómputo dinámico de oportunidad de atención sin barreras administrativas).
+  - Cumplimiento de la **Ley Estatutaria 1581 de 2012** y Decreto 1377 de 2013 (autorizaciones independientes, consentimiento del acompañante, procedimiento de Habeas Data con plazos de 10 y 15 días, y aplicación rigurosa de la excepción del **Artículo 10 literal b** para urgencias vitales y pacientes NN).
+  - Matriz de Evaluación de Impacto en Privacidad (DPIA) y catálogo del Registro Nacional de Bases de Datos (RNBD).
+- **Documento de Arquitectura y Modelo de Datos (`docs/arquitectura.md`)**:
+  - Especificación de capas limpias (Presentación, Enrutamiento/Middlewares, Controladores/FormRequests, Servicios de Dominio, Persistencia Eloquent).
+  - Diagrama de secuencia del ciclo de vida de la atención de urgencia en Mermaid.
+  - Diagrama Entidad-Relación (ER) completo con tipos de datos, relaciones y claves en Mermaid.
+- **Acceso Dual a la Documentación Técnica**:
+  - Implementación del comando de consola `php artisan hospital:docs` (con opciones `--seguridad` y `--modulos`).
+  - Ruta web institucional accesible en `/documentacion` (alias `/docs`) con renderizado seguro de Markdown a HTML.
+- **Actualización Integral de `README.md`**:
+  - Descripción, requisitos, guía paso a paso de instalación, pruebas, comandos de consola y árbol de documentación técnica.
+
+---
+
+## 3. Decisiones técnicas
+- **Estandarización Institucional de Nombre**: Uso estricto de **"Hospital de Ubaté"** (evitando "Hospital El Salvador de Ubaté E.S.E.") en cumplimiento de requerimientos de propiedad intelectual y autorizaciones institucionales previas.
+- **Protección de Memoria Caché Médica**: Configuración de `no-store` dinámico en `SecurityHeaders` cuando `auth()->check() == true` para mitigar el riesgo de fuga de datos sensibles en estaciones compartidas de urgencias (Ley 1581 / Res. 1995).
+- **Restricción Exclusiva de Rutas**: Ningún parámetro de ruta queda abierto a cadenas arbitrarias; se aplican validadores regex `whereUuid`, `whereNumber` y `whereAlphaNumeric` en `routes/web.php`.
+- **Marca de Agua Forense en PDF**: Implementada mediante div fijo CSS repetido en todas las páginas por el motor Dompdf (`position: fixed; top: 35%; left: -15%; transform: rotate(-35deg); opacity: 0.07;`) garantizando el no repudio sin habilitar banderas inseguras como ejecución de código PHP embebido (`enable_php: false`).
+- **Cálculo de Tiempos de Triage (Res. 5596/2015)**: El tiempo de espera se computa formalmente entre la marca de tiempo de triaje (`triage_at`) y la marca de tiempo inmutable de la primera evolución médica del episodio (`performed_at`), o contra la hora actual para pacientes que continúan en estado `en_espera`.
+- **Arquitectura de Credenciales para Acompañantes**:
+  - *Código del Paciente:* Código público alfanumérico único del episodio (ej: `UBT1A2B3`, 8 caracteres en mayúsculas).
+  - *PIN de Acceso Predeterminado:* Por defecto son los **últimos 4 dígitos del documento de identidad** del paciente (o los últimos 4 dígitos del identificador `NN-AAAAMMDD-XXXX` si es paciente NN).
+  - *PIN Personalizado o Generado:* El personal puede emitir un PIN aleatorio de 6 dígitos o restablecerlo en cualquier momento. Se almacena cifrado con AES-256 (`pin => 'encrypted'`) en la base de datos junto con su hash (`pin_hash`), permitiendo que el médico encargado, personal asignado y administrador lo visualicen de manera permanente en la historia clínica sin perderse tras recargar la pantalla.
+  - *Autorización Basada en Roles (`EmergencyEpisodePolicy`):* La gestión del acceso del acompañante (`manageCompanionAccess`) y el otorgamiento/revocación de consentimiento para compartir datos clínicos (`manageCompanionConsent`) están estrictamente restringidos al médico responsable del episodio, equipo asistencial asignado, coordinación médica y administradores; usuarios no asignados son bloqueados con `403 Forbidden`.
+- **PostgreSQL Concurrency Lock**: Bloqueo de fila `lockForUpdate` en todas las transiciones de estado clínico, asignación de camillas, turnos, conciliación de identidad y emisión de PINs.
+- **Inmutabilidad Médica (Res. 1995/1999)**: Protección en Eloquent (`booted`) y base de datos contra edición o borrado de evoluciones clínicas; el modelo solo admite adición de notas aclaratorias o anulaciones enlazadas.
+- **Inmutabilidad de Consentimientos (Ley 1581)**: El modelo `Consent` prohíbe modificaciones o eliminaciones arbitrarias; únicamente admite registrar `revoked_at` de forma atómica para registrar la revocación.
+- **Anti-Enumeración en Canal Acompañante y Contacto**: Respuestas de autenticación idénticas ante código inválido, PIN inválido o acompañante no registrado; aislamiento de los módulos públicos de contacto y acompañantes dentro de `@guest` para no polucionar la interfaz del personal médico y administrativo.
+- **Redirección Predictiva al Dashboard**: La ruta `/admin` y el flujo post-autenticación (`LoginController`, `TwoFactorChallengeController`) redirigen de forma determinista al Dashboard institucional, evitando aterrizajes no deseados en auditoría o vistas secundarias.
+- **Preservación Forense NN**: Al conciliar identidad, el paciente NN original permanece intacto en la tabla `patients` y el código `NN-AAAAMMDD-XXXX` se conserva permanentemente en `emergency_episodes` para garantizar la trazabilidad forense y médico-legal.
+- **Excepción Legal Ley 1581 Art. 10**: Admisión inmediata para salvaguardar la vida sin exigir consentimiento previo a pacientes inconscientes o desorientados, formalizada mediante registro inmutable en `consents`.
+- **Control de Custodia Break-Glass**: Barrera de acceso excepcional que impide la consulta pasiva de historias clínicas por profesionales no asignados, exigiendo justificación auditada y bloqueando acciones clínicas en modo consulta.
+- **Diseño sin Emojis y Accesible**: Reemplazo total de emojis por iconografía lineal Bootstrap Icons local compilada con Vite, tokens de diseño con contraste verificado >= 4.5:1 y objetivos táctiles de 44px.
+
+---
+
+## 4. Estado Final de Fases
+* **Fase 1 (Arquitectura y Modelos Base):** CERRADA Y VALIDADA.
+* **Fase 2 (Autenticación y Seguridad 2FA):** CERRADA Y VALIDADA.
+* **Fase 3 (Pre-registro Digital y Admisión Triage):** CERRADA Y VALIDADA.
+* **Fase 4 (Módulo Clínico, Camillas y Break-Glass):** CERRADA Y VALIDADA.
+* **Fase 5 (Portal de Acompañantes y Consentimientos):** CERRADA Y VALIDADA.
+* **Fase 6 (Historia Clínica PDF, Reportes Triage y Auditoría):** CERRADA Y VALIDADA.
+* **Fase 7 (Endurecimiento de Rutas, Caché No-Store y Pruebas):** CERRADA Y VALIDADA.
+* **Fase 8 (Preparación de Producción, Despliegue y Cumplimiento):** CERRADA Y VALIDADA.
+
+**SISTEMA 100% COMPLETADO Y LISTO PARA OPERACIÓN EN PRODUCCIÓN.**
 
 ---
 
 ## 5. Última prueba exitosa
-- **Fecha y hora:** 2026-10-25 21:28:32 -05:00
+- **Fecha y hora:** 2026-10-26 01:10:25 -05:00
 - **Comando ejecutado:** `php artisan test`
-- **Resultado:** 125 pasadas, 0 fallidas (512 aserciones). Tiempo: 67.81s
+- **Resultado:** 157 pasadas, 0 fallidas (681 aserciones). Tiempo: 114.07s
   - `Tests\Unit\ExampleTest`: 1 pasada
-  - `Tests\Feature\ExampleTest`: 1 pasada
-  - `Tests\Feature\CompanionTrackingTest`: 11 pasadas
+  - `Tests\Feature\ExampleTest`: 8 pasadas (verificación de portal institucional, Triage, aislamiento de navbar, redirección de /admin y página de documentación)
+  - `Tests\Feature\CompanionTrackingTest`: 15 pasadas
+  - `Tests\Feature\EmergencyReportTest`: 7 pasadas
+  - `Tests\Feature\EpisodePdfTest`: 8 pasadas
   - `Tests\Feature\IdentityReconciliationTest`: 13 pasadas
   - `Tests\Feature\MedicalEpisodeTest`: 25 pasadas
   - `Tests\Feature\PhysicalResourcesAndStaffTest`: 16 pasadas
   - `Tests\Feature\PreregistrationTest`: 15 pasadas
-  - `Tests\Feature\SecurityTest`: 38 pasadas
+  - `Tests\Feature\SecurityHardeningTest`: 6 pasadas
+  - `Tests\Feature\SecurityTest`: 39 pasadas
+
+

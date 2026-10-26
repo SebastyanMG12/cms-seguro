@@ -13,12 +13,12 @@ use Illuminate\Validation\ValidationException;
 class CompanionService
 {
     /**
-     * Genera o regenera un PIN presencial de 6 dígitos para el acompañante.
-     * Retorna el PIN en texto plano para mostrarlo una única vez al funcionario.
+     * Genera, asigna o regenera un PIN presencial para el acompañante.
+     * Guarda el PIN cifrado para que el personal autorizado pueda consultarlo y su hash para validación rápida.
      */
-    public function generatePin(EmergencyEpisode $episode, User $staffUser): string
+    public function generatePin(EmergencyEpisode $episode, User $staffUser, ?string $customPin = null): string
     {
-        return DB::transaction(function () use ($episode, $staffUser) {
+        return DB::transaction(function () use ($episode, $staffUser, $customPin) {
             $locked = EmergencyEpisode::where('id', $episode->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->isClosed()) {
@@ -27,10 +27,11 @@ class CompanionService
                 ]);
             }
 
-            // Generar PIN numérico criptográficamente seguro de 6 dígitos
-            $plainPin = sprintf('%06d', random_int(100000, 999999));
+            // Si se proporciona un PIN personalizado (o los dígitos del documento), se utiliza; de lo contrario se genera uno de 6 dígitos
+            $plainPin = $customPin ? trim($customPin) : sprintf('%06d', random_int(100000, 999999));
 
             $companion = Companion::firstOrNew(['episode_id' => $locked->id]);
+            $companion->pin = $plainPin;
             $companion->pin_hash = Hash::make($plainPin);
             $companion->verified_by_user_id = $staffUser->id;
             $companion->verified_at = now();
@@ -44,6 +45,33 @@ class CompanionService
             ]);
 
             return $plainPin;
+        });
+    }
+
+    /**
+     * Restablece el PIN del acompañante a los últimos dígitos del documento del paciente (o código NN).
+     */
+    public function resetPinToDefault(EmergencyEpisode $episode, User $staffUser): string
+    {
+        return DB::transaction(function () use ($episode, $staffUser) {
+            $locked = EmergencyEpisode::where('id', $episode->id)->lockForUpdate()->firstOrFail();
+            $defaultPin = $locked->getDefaultCompanionPin();
+
+            $companion = Companion::firstOrNew(['episode_id' => $locked->id]);
+            $companion->pin = null;
+            $companion->pin_hash = Hash::make($defaultPin);
+            $companion->verified_by_user_id = $staffUser->id;
+            $companion->verified_at = now();
+            $companion->revoked_at = null;
+            $companion->save();
+
+            Audit::log('acompanante.pin_restablecido_defecto', $locked, [
+                'public_code' => $locked->public_code,
+                'companion_id' => $companion->id,
+                'verified_by_user_id' => $staffUser->id,
+            ]);
+
+            return $defaultPin;
         });
     }
 
@@ -149,25 +177,51 @@ class CompanionService
             ])
             ->first();
 
-        if (! $episode || ! $episode->companion || ! $episode->companion->pin_hash) {
+        if (! $episode) {
             return [
                 'success' => false,
                 'status' => 'invalid_credentials',
             ];
         }
 
-        if (! Hash::check($pin, $episode->companion->pin_hash)) {
-            return [
-                'success' => false,
-                'status' => 'invalid_credentials',
-            ];
-        }
-
-        if ($episode->companion->revoked_at !== null) {
+        if ($episode->companion && $episode->companion->revoked_at !== null) {
             return [
                 'success' => false,
                 'status' => 'revoked',
                 'episode' => $episode,
+            ];
+        }
+
+        // Validación de coincidencia de PIN:
+        // 1. PIN directo guardado (cifrado)
+        // 2. Hash del PIN guardado
+        // 3. Coincidencia con el PIN predeterminado (últimos 4 dígitos del documento o código NN)
+        $isMatch = false;
+
+        if ($episode->companion && ! empty($episode->companion->pin)) {
+            $isMatch = ((string) $episode->companion->pin === (string) $pin);
+        }
+
+        if (! $isMatch && $episode->companion && ! empty($episode->companion->pin_hash)) {
+            $isMatch = Hash::check($pin, $episode->companion->pin_hash);
+        }
+
+        if (! $isMatch && (! $episode->companion || empty($episode->companion->pin_hash))) {
+            $defaultPin = $episode->getDefaultCompanionPin();
+            if ((string) $pin === (string) $defaultPin) {
+                $isMatch = true;
+                // Auto-inicializar registro de acompañante con el PIN por defecto
+                $comp = Companion::firstOrNew(['episode_id' => $episode->id]);
+                $comp->pin = $pin;
+                $comp->pin_hash = Hash::make($pin);
+                $comp->save();
+            }
+        }
+
+        if (! $isMatch) {
+            return [
+                'success' => false,
+                'status' => 'invalid_credentials',
             ];
         }
 

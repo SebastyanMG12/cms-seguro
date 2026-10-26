@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Consulta de Acompañante - Hospital El Salvador de Ubaté')
+@section('title', 'Consulta de Acompañante - Hospital de Ubaté')
 
 @section('content')
 <div class="row justify-content-center">
@@ -12,7 +12,7 @@
                 <div class="mb-2">
                     <i class="bi bi-hospital fs-1" aria-hidden="true"></i>
                 </div>
-                <h1 class="h4 fw-bold mb-1">Hospital El Salvador de Ubaté E.S.E.</h1>
+                <h1 class="h4 fw-bold mb-1">Hospital de Ubaté</h1>
                 <p class="mb-0 fs-6">Seguimiento de Urgencias para Acompañantes</p>
                 <small class="opacity-75">Canal oficial de información en tiempo real</small>
             </div>

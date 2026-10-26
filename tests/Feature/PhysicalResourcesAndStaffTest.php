@@ -46,7 +46,7 @@ class PhysicalResourcesAndStaffTest extends TestCase
     private function createHospitalHierarchy(): array
     {
         $site = Site::create([
-            'name' => 'Hospital El Salvador de Ubaté',
+            'name' => 'Hospital de Ubaté',
             'code' => 'UBATE-CENTRAL',
             'address' => 'Carrera 7 # 8-45',
             'status' => 'activo',

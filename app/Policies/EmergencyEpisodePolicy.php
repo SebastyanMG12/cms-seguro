@@ -89,7 +89,35 @@ class EmergencyEpisodePolicy
 
     public function updateCompanion(User $user, EmergencyEpisode $episode): bool
     {
-        return $user->can('episodios.ver') && $episode->isOpen();
+        if ($episode->isClosed()) {
+            return false;
+        }
+
+        return $episode->responsible_user_id === $user->id
+            || $episode->isAssignedUser($user)
+            || $user->hasAnyRole(['coordinador', 'administrador', 'admisiones']);
+    }
+
+    public function manageCompanionConsent(User $user, EmergencyEpisode $episode): bool
+    {
+        if ($episode->isClosed()) {
+            return false;
+        }
+
+        return $episode->responsible_user_id === $user->id
+            || $episode->isAssignedUser($user)
+            || $user->hasAnyRole(['coordinador', 'administrador']);
+    }
+
+    public function manageCompanionAccess(User $user, EmergencyEpisode $episode): bool
+    {
+        if ($episode->isClosed()) {
+            return false;
+        }
+
+        return $episode->responsible_user_id === $user->id
+            || $episode->isAssignedUser($user)
+            || $user->hasAnyRole(['coordinador', 'administrador', 'admisiones']);
     }
 
     public function createNn(User $user): bool
@@ -102,5 +130,22 @@ class EmergencyEpisodePolicy
         return $user->can('episodios.conciliar')
             && $episode->isNn()
             && ! $episode->isReconciled();
+    }
+
+    public function downloadPdf(User $user, EmergencyEpisode $episode): bool
+    {
+        if (! $user->can('episodios.pdf')) {
+            return false;
+        }
+
+        if ($user->hasAnyRole(['administrador', 'coordinador', 'auditor'])) {
+            return true;
+        }
+
+        if (session()->has("exceptional_access_{$episode->id}")) {
+            return true;
+        }
+
+        return $episode->isAssignedUser($user);
     }
 }

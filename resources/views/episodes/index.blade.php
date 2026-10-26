@@ -3,15 +3,18 @@
 @section('title', 'Módulo de Urgencias - Hospital de Ubaté')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
     <div>
         <h1 class="h4 mb-0 fw-bold text-dark">Servicio de Urgencias - Atención Clínica</h1>
         <p class="text-muted small mb-0">Gestión de episodios, clasificación de triage y censo de pacientes en urgencias.</p>
     </div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-2">
         <span class="badge bg-primary-subtle text-primary border px-3 py-2 fs-6 tabular-nums">
             <i class="bi bi-person-badge me-1" aria-hidden="true"></i> Mis pacientes asignados: <strong>{{ $myActivePatientsCount }}</strong>
         </span>
+        <a href="{{ route('preregistro.create') }}" class="btn btn-outline-dark btn-sm py-2 px-3 fw-semibold shadow-sm">
+            <i class="bi bi-card-checklist me-1" aria-hidden="true"></i>Nuevo Pre-registro
+        </a>
         @can('episodios.crear_nn')
             <a href="{{ route('episodes.nn.create') }}" class="btn btn-danger btn-sm py-2 px-3 fw-semibold shadow-sm">
                 <i class="bi bi-person-exclamation me-1" aria-hidden="true"></i>Registrar Paciente NN
@@ -19,6 +22,7 @@
         @endcan
     </div>
 </div>
+
 
 @if (session('success'))
     <div class="alert alert-success alert-dismissible fade show py-2" role="alert">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Estado del Paciente - Hospital El Salvador de Ubaté')
+@section('title', 'Estado del Paciente - Hospital de Ubaté')
 
 @section('content')
 <div class="row justify-content-center">
@@ -295,9 +295,9 @@
                     <i class="bi bi-arrow-repeat text-primary me-1" aria-hidden="true"></i>
                     Información actualizada en tiempo real
                 </div>
-                <button type="button" class="btn btn-outline-primary btn-sm px-3" style="min-height: 40px;" onclick="window.location.reload();">
-                    <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Actualizar Estado
-                </button>
+                <a href="{{ route('companion.status') }}" class="btn btn-outline-primary btn-sm px-3 d-inline-flex align-items-center" id="btnRefreshCompanionStatus" style="min-height: 40px;">
+                    <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i><span>Actualizar Estado</span>
+                </a>
             </div>
         </div>
 

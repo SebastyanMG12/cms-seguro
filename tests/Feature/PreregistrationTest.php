@@ -19,7 +19,7 @@ class PreregistrationTest extends TestCase
         $response = $this->get(route('preregistro.create'));
 
         $response->assertStatus(200);
-        $response->assertSee('Hospital El Salvador de Ubaté');
+        $response->assertSee('Hospital de Ubaté');
         $response->assertSee('Aviso Importante sobre la Atención de Urgencias');
         $response->assertSee('Signos de Alarma');
         $response->assertSee('Ley Estatutaria 1581 de 2012');

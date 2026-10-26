@@ -1,4 +1,4 @@
-# Sistema de Diseño y Tokens: Hospital El Salvador de Ubaté E.S.E.
+# Sistema de Diseño y Tokens: Hospital de Ubaté
 
 Documento de especificación visual, tokens de diseño y directrices de accesibilidad (WCAG 2.2 AA) para el sistema hospitalario de urgencias.
 

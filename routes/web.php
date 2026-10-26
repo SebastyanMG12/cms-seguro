@@ -9,6 +9,8 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Hospital\CompanionManagementController;
 use App\Http\Controllers\Hospital\EmergencyNnController;
+use App\Http\Controllers\Hospital\EmergencyReportController;
+use App\Http\Controllers\Hospital\EpisodePdfController;
 use App\Http\Controllers\Hospital\MedicalEpisodeController;
 use App\Http\Controllers\Hospital\OccupancyController;
 use App\Http\Controllers\Hospital\PhysicalResourceController;
@@ -26,6 +28,8 @@ use Illuminate\Support\Facades\Route;
 // Rutas públicas
 Route::get('/', [PageController::class, 'home'])->name('home');
 Route::get('/acerca', [PageController::class, 'about'])->name('about');
+Route::get('/documentacion', [PageController::class, 'documentation'])->name('documentation');
+Route::redirect('/docs', '/documentacion');
 Route::get('/contacto', [ContactController::class, 'create'])->name('contact.create');
 Route::post('/contacto', [ContactController::class, 'store'])
     ->middleware('throttle:5,1')
@@ -36,7 +40,9 @@ Route::get('/preregistro', [PreregistrationController::class, 'create'])->name('
 Route::post('/preregistro', [PreregistrationController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('preregistro.store');
-Route::get('/preregistro/exito/{code}', [PreregistrationController::class, 'success'])->name('preregistro.success');
+Route::get('/preregistro/exito/{code}', [PreregistrationController::class, 'success'])
+    ->whereAlphaNumeric('code')
+    ->name('preregistro.success');
 
 // Módulo público de consulta y seguimiento del acompañante (Fase 5)
 Route::get('/acompanante', [CompanionTrackingController::class, 'loginForm'])->name('companion.login');
@@ -84,6 +90,7 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
         ->name('two-factor.confirm');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/admin', fn () => redirect()->route('dashboard'))->name('admin');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::resource('posts', PostController::class);
@@ -222,4 +229,15 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::post('/episodios/{episode}/acompanante/consentimiento', [CompanionManagementController::class, 'toggleConsent'])
         ->whereUuid('episode')
         ->name('episodes.companion.consent');
+
+    // Reportes analíticos y tablero de triage (Fase 6)
+    Route::get('/reportes', [EmergencyReportController::class, 'index'])->name('reports.index');
+
+    // Historial clínico oficial en PDF con marca de agua y auditoría forense (Fase 6)
+    Route::get('/episodios/{episode}/pdf', [EpisodePdfController::class, 'download'])
+        ->whereUuid('episode')
+        ->name('episodes.pdf.download');
+    Route::get('/episodios/{episode}/pdf/ver', [EpisodePdfController::class, 'stream'])
+        ->whereUuid('episode')
+        ->name('episodes.pdf.stream');
 });

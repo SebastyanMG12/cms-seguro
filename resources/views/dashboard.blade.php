@@ -22,7 +22,7 @@
                                     <span class="badge bg-light text-dark border">{{ $staffProfile->specialty }}</span>
                                 @endif
                             </div>
-                            <p class="text-muted small mb-0">Estación Clínica de Urgencias — Hospital de Ubaté</p>
+                            <p class="text-muted small mb-0">Estación Clínica de Urgencias - Hospital de Ubaté</p>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             @if ($activeShift)
@@ -256,7 +256,7 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <div>
                             <h1 class="h4 mb-0 fw-bold text-dark">Panel de Control Operativo</h1>
-                            <p class="text-muted small mb-0">Gestión de operaciones hospitalarias, recursos y personal — Hospital de Ubaté</p>
+                            <p class="text-muted small mb-0">Gestión de operaciones hospitalarias, recursos y personal - Hospital de Ubaté</p>
                         </div>
                         <div class="d-flex gap-2">
                             @can('ocupacion.ver')

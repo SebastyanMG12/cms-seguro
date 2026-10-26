@@ -34,6 +34,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'episodios.asignar_camilla',
             'episodios.crear_nn',
             'episodios.conciliar',
+            // Módulo de Reportes y PDF (Fase 6)
+            'episodios.pdf',
+            'reportes.ver',
         ];
 
         foreach ($permissions as $name) {
@@ -54,6 +57,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'episodios.asignar_personal',
                 'episodios.crear_nn',
                 'episodios.conciliar',
+                'episodios.pdf',
+                'reportes.ver',
             ],
             'coordinador' => [
                 'correos.ver',
@@ -70,6 +75,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 'episodios.asignar_camilla',
                 'episodios.crear_nn',
                 'episodios.conciliar',
+                'episodios.pdf',
+                'reportes.ver',
             ],
             'medico' => [
                 'ocupacion.ver',
@@ -81,6 +88,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'episodios.asignar_camilla',
                 'episodios.crear_nn',
                 'episodios.conciliar',
+                'episodios.pdf',
             ],
             'enfermero' => [
                 'ocupacion.ver',
@@ -102,6 +110,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'auditor' => [
                 'auditoria.ver',
                 'episodios.ver',
+                'episodios.pdf',
+                'reportes.ver',
             ],
             'editor' => [
                 'correos.ver',

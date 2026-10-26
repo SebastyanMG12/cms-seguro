@@ -19,7 +19,7 @@ class HospitalInfrastructureSeeder extends Seeder
         $site = Site::firstOrCreate(
             ['code' => 'HESU'],
             [
-                'name' => 'Hospital El Salvador de Ubaté - Sede Principal',
+                'name' => 'Hospital de Ubaté - Sede Principal',
                 'address' => 'Carrera 7 # 8-45, Ubaté, Cundinamarca',
                 'status' => 'activo',
             ]

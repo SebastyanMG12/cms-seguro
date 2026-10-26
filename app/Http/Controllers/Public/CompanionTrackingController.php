@@ -7,6 +7,7 @@ use App\Models\EmergencyEpisode;
 use App\Services\CompanionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
@@ -90,7 +91,7 @@ class CompanionTrackingController extends Controller
     /**
      * Muestra la pantalla de seguimiento en tiempo real con datos estrictamente minimizados.
      */
-    public function status(): View|RedirectResponse
+    public function status(): Response|RedirectResponse
     {
         $episodeId = session('companion_episode_id');
         if (! $episodeId) {
@@ -128,12 +129,15 @@ class CompanionTrackingController extends Controller
                 ->withErrors(['auth' => 'El acceso para este episodio ha finalizado tras el egreso del paciente.']);
         }
 
-        return view('companion.status', [
-            'episode' => $episode,
-            'maskedName' => $episode->masked_patient_name,
-            'hasConsent' => $episode->hasActiveCompanionConsent(),
-            'activeConsent' => $episode->activeCompanionConsent(),
-        ]);
+        return response()
+            ->view('companion.status', [
+                'episode' => $episode,
+                'maskedName' => $episode->masked_patient_name,
+                'hasConsent' => $episode->hasActiveCompanionConsent(),
+                'activeConsent' => $episode->activeCompanionConsent(),
+            ])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     /**

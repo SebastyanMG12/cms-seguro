@@ -132,3 +132,14 @@ body {
         pointer-events: none;
     }
 }
+
+// 9. Animación de refresco
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.spin-animation {
+    display: inline-block;
+    animation: spin 0.75s linear infinite;
+}

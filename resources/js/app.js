@@ -117,4 +117,24 @@ document.addEventListener('DOMContentLoaded', () => {
             window.print();
         });
     }
+
+    // 7. Botón refrescar estado en portal de acompañantes (respetando CSP)
+    const btnRefreshStatus = document.getElementById('btnRefreshCompanionStatus');
+    if (btnRefreshStatus) {
+        btnRefreshStatus.addEventListener('click', function (e) {
+            e.preventDefault();
+            this.classList.add('disabled');
+            this.setAttribute('aria-disabled', 'true');
+            const icon = this.querySelector('.bi');
+            if (icon) {
+                icon.className = 'bi bi-arrow-repeat me-1 spin-animation';
+            }
+            const label = this.querySelector('span');
+            if (label) {
+                label.textContent = 'Actualizando...';
+            }
+            const cleanUrl = this.href.split('?')[0];
+            window.location.href = cleanUrl + '?t=' + Date.now();
+        });
+    }
 });

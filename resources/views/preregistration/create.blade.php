@@ -9,7 +9,7 @@
         {{-- Encabezado Institucional --}}
         <div class="card shadow-sm border-0 mb-4 bg-primary text-white">
             <div class="card-body p-4 text-center">
-                <h1 class="h3 fw-bold mb-2">Hospital El Salvador de Ubaté E.S.E.</h1>
+                <h1 class="h3 fw-bold mb-2">Hospital de Ubaté</h1>
                 <p class="mb-0 fs-5">Pre-registro Digital para el Servicio de Urgencias</p>
                 <small class="opacity-75">Agilice su recepción al presentarse en la institución</small>
             </div>
@@ -41,7 +41,7 @@
                         Ha marcado uno o más signos de alarma críticos. NO espere en casa ni posponga la atención.
                     </p>
                     <p class="mb-0 small">
-                        Acuda de inmediato al servicio de urgencias del Hospital El Salvador de Ubaté o comuníquese de forma urgente a la línea nacional de emergencias <strong>123</strong> o a la ambulancia local.
+                        Acuda de inmediato al servicio de urgencias del Hospital de Ubaté o comuníquese de forma urgente a la línea nacional de emergencias <strong>123</strong> o a la ambulancia local.
                     </p>
                 </div>
             </div>
@@ -307,7 +307,7 @@
                         <label class="form-check-label ms-2" for="consent_data_treatment">
                             <span class="fw-bold text-dark">Autorización para el Tratamiento de Datos Personales y Sensibles (Obligatorio)</span> <span class="text-danger">*</span>
                             <p class="small text-muted mb-1 mt-1">
-                                En cumplimiento de la <strong>Ley Estatutaria 1581 de 2012</strong>, autorizo de manera voluntaria, previa, explícita e informada al <strong>Hospital El Salvador de Ubaté E.S.E.</strong> para tratar mis datos personales y de salud con la exclusiva finalidad de gestionar mi pre-registro y atención médica de urgencias.
+                                En cumplimiento de la <strong>Ley Estatutaria 1581 de 2012</strong>, autorizo de manera voluntaria, previa, explícita e informada al <strong>Hospital de Ubaté</strong> para tratar mis datos personales y de salud con la exclusiva finalidad de gestionar mi pre-registro y atención médica de urgencias.
                             </p>
                             <p class="small text-muted mb-0">
                                 <em>Se informa expresamente el carácter facultativo de las respuestas sobre datos sensibles de salud y los derechos del titular a conocer, actualizar, rectificar y revocar ante el canal institucional: protecciondedatos@hospitalubate.gov.co.</em>

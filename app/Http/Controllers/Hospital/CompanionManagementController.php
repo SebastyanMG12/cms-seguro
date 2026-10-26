@@ -12,16 +12,32 @@ use Illuminate\Support\Facades\Gate;
 class CompanionManagementController extends Controller
 {
     /**
-     * Genera o regenera un PIN presencial para el acompañante del episodio.
+     * Genera, asigna o restablece el PIN presencial para el acompañante del episodio.
      */
-    public function generatePin(EmergencyEpisode $episode, CompanionService $companionService): RedirectResponse
+    public function generatePin(Request $request, EmergencyEpisode $episode, CompanionService $companionService): RedirectResponse
     {
-        Gate::authorize('view', $episode);
+        Gate::authorize('manageCompanionAccess', $episode);
 
-        $plainPin = $companionService->generatePin($episode, auth()->user());
+        $validated = $request->validate([
+            'mode' => ['nullable', 'string', 'in:random,default,custom'],
+            'custom_pin' => ['nullable', 'string', 'digits_between:4,6'],
+        ]);
+
+        $mode = $validated['mode'] ?? 'random';
+
+        if ($mode === 'default') {
+            $plainPin = $companionService->resetPinToDefault($episode, auth()->user());
+            $msg = 'PIN restablecido a los dígitos del documento del paciente.';
+        } elseif ($mode === 'custom' && ! empty($validated['custom_pin'])) {
+            $plainPin = $companionService->generatePin($episode, auth()->user(), $validated['custom_pin']);
+            $msg = 'PIN personalizado asignado exitosamente.';
+        } else {
+            $plainPin = $companionService->generatePin($episode, auth()->user());
+            $msg = 'Nuevo PIN presencial generado exitosamente.';
+        }
 
         return redirect()->route('episodes.show', $episode)
-            ->with('success', 'PIN presencial generado exitosamente. Entregue este código en persona al acompañante.')
+            ->with('success', $msg)
             ->with('generated_pin', $plainPin);
     }
 
@@ -30,7 +46,7 @@ class CompanionManagementController extends Controller
      */
     public function revokeAccess(Request $request, EmergencyEpisode $episode, CompanionService $companionService): RedirectResponse
     {
-        Gate::authorize('view', $episode);
+        Gate::authorize('manageCompanionAccess', $episode);
 
         $validated = $request->validate([
             'reason' => ['nullable', 'string', 'max:255'],
@@ -47,7 +63,7 @@ class CompanionManagementController extends Controller
      */
     public function toggleConsent(Request $request, EmergencyEpisode $episode, CompanionService $companionService): RedirectResponse
     {
-        Gate::authorize('view', $episode);
+        Gate::authorize('manageCompanionConsent', $episode);
 
         $validated = $request->validate([
             'enable' => ['required', 'boolean'],

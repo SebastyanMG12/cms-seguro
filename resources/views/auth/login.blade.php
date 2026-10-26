@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
+        <div class="col-12 col-md-6 col-lg-5">
             <div class="card shadow-sm">
                 <div class="card-body p-4">
                     <h1 class="h3 mb-1">Iniciar sesión</h1>

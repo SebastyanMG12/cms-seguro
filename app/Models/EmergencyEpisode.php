@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -112,6 +113,13 @@ class EmergencyEpisode extends Model
     public function activeAssignments(): HasMany
     {
         return $this->hasMany(EpisodeAssignment::class, 'episode_id')->whereNull('ended_at');
+    }
+
+    public function supportUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'episode_assignments', 'episode_id', 'user_id')
+            ->wherePivot('role', 'apoyo')
+            ->wherePivotNull('ended_at');
     }
 
     public function isOpen(): bool
@@ -222,6 +230,63 @@ class EmergencyEpisode extends Model
         }
 
         return $closedTime->copy()->addHours(24)->isPast();
+    }
+
+    /**
+     * Retorna el PIN predeterminado para el acompañante (últimos 4 dígitos del documento o del código NN).
+     */
+    public function getDefaultCompanionPin(): string
+    {
+        if ($this->is_nn) {
+            if ($this->nn_code && preg_match('/(\d{4})$/', $this->nn_code, $matches)) {
+                return $matches[1];
+            }
+
+            return '0000';
+        }
+
+        $doc = preg_replace('/\D/', '', (string) ($this->patient?->document_number ?? ''));
+        if (strlen($doc) >= 4) {
+            return substr($doc, -4);
+        }
+
+        if (strlen($doc) > 0) {
+            return str_pad($doc, 4, '0', STR_PAD_LEFT);
+        }
+
+        return substr(preg_replace('/[^a-zA-Z0-9]/', '', $this->public_code), -4);
+    }
+
+    /**
+     * Retorna el PIN activo actual (el personalizado si existe, o el predeterminado).
+     */
+    public function getCompanionPin(): string
+    {
+        if ($this->companion && ! empty($this->companion->pin)) {
+            return (string) $this->companion->pin;
+        }
+
+        return $this->getDefaultCompanionPin();
+    }
+
+    /**
+     * Retorna una descripción clara de la fuente del PIN para mostrar al médico o administrador.
+     */
+    public function getCompanionPinSourceDescription(): string
+    {
+        if ($this->companion && ! empty($this->companion->pin) && $this->companion->pin !== $this->getDefaultCompanionPin()) {
+            return 'PIN asignado en hospital';
+        }
+
+        if ($this->is_nn) {
+            return "Últimos 4 dígitos del identificador NN ({$this->nn_code})";
+        }
+
+        if (! empty($this->patient?->document_number)) {
+            return "Últimos 4 dígitos del documento ({$this->patient->document_number})";
+        }
+
+        return 'PIN predeterminado del episodio';
     }
 
     /**

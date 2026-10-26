@@ -35,11 +35,19 @@
         <small class="text-muted">Origen: {{ ucfirst(str_replace('_', '-', $episode->origin)) }} | Creado: <span class="tabular-nums">{{ $episode->created_at->format('d/m/Y H:i') }}</span></small>
     </div>
 
-    @if ($episode->isClosed())
-        <div class="episode-closed-banner">
-            <i class="bi bi-lock-fill me-1 text-secondary" aria-hidden="true"></i> Episodio cerrado (Solo lectura legal)
-        </div>
-    @endif
+    <div class="d-flex align-items-center gap-2">
+        @can('downloadPdf', $episode)
+            <button type="button" class="btn btn-sm btn-outline-danger shadow-sm py-1 px-3" data-bs-toggle="modal" data-bs-target="#pdfConfirmationModal">
+                <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Historia en PDF
+            </button>
+        @endcan
+
+        @if ($episode->isClosed())
+            <div class="episode-closed-banner">
+                <i class="bi bi-lock-fill me-1 text-secondary" aria-hidden="true"></i> Episodio cerrado (Solo lectura legal)
+            </div>
+        @endif
+    </div>
 </div>
 
 @if (session('success'))
@@ -400,120 +408,163 @@
             <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
                 <h3 class="h6 mb-0 fw-bold"><i class="bi bi-people me-1" aria-hidden="true"></i>Acompañante</h3>
                 @if ($episode->isOpen())
-                    <button class="btn btn-sm btn-link py-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#companionModal">
-                        <i class="bi bi-pencil" aria-hidden="true"></i> Editar
-                    </button>
+                    @can('updateCompanion', $episode)
+                        <button class="btn btn-sm btn-link py-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#companionModal">
+                            <i class="bi bi-pencil" aria-hidden="true"></i> {{ $episode->companion ? 'Editar' : 'Registrar' }}
+                        </button>
+                    @endcan
                 @endif
             </div>
             <div class="card-body p-3 small">
+                {{-- Datos de Contacto --}}
                 @if ($episode->companion)
                     <div><strong>{{ $episode->companion->name ?? 'Sin nombre registrado' }}</strong></div>
                     <div class="text-muted">Parentesco: {{ $episode->companion->relationship ?? 'No especificado' }}</div>
                     <div class="text-muted tabular-nums">Teléfono: {{ $episode->companion->phone ?? 'No registrado' }}</div>
+                @else
+                    <div class="text-muted mb-2 fst-italic">Sin datos de contacto de acompañante registrados.</div>
+                @endif
 
-                    <hr class="my-2">
+                <hr class="my-2">
 
-                    {{-- Estado del PIN de Acceso --}}
-                    <div class="mb-2">
-                        <span class="text-muted small d-block mb-1">Acceso y PIN Presencial:</span>
-                        @if ($episode->companion->revoked_at)
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                                <span class="badge bg-danger">Acceso Revocado</span>
-                                @if ($episode->isOpen())
-                                    <form method="POST" action="{{ route('episodes.companion.pin', $episode) }}" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">
-                                            <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Emitir Nuevo PIN
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                            <small class="text-muted d-block mt-1">Revocado el {{ $episode->companion->revoked_at->format('d/m/Y H:i') }}</small>
-                        @elseif ($episode->companion->pin_hash)
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                                <span class="badge bg-success"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>PIN Activo</span>
-                                @if ($episode->isOpen())
-                                    <div class="btn-group btn-group-sm">
-                                        <form method="POST" action="{{ route('episodes.companion.pin', $episode) }}" class="d-inline" onsubmit="return confirm('¿Regenerar PIN? El código anterior quedará invalidado de inmediato.');">
-                                            @csrf
-                                            <button type="submit" class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" title="Regenerar PIN">
-                                                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Regenerar
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="{{ route('episodes.companion.revoke', $episode) }}" class="d-inline ms-1" onsubmit="return confirm('¿Revocar el acceso del acompañante a este episodio?');">
-                                            @csrf
-                                            <button type="submit" class="btn btn-outline-danger py-0 px-2" style="font-size: 0.75rem;" title="Revocar Acceso">
-                                                <i class="bi bi-slash-circle me-1" aria-hidden="true"></i>Revocar
-                                            </button>
-                                        </form>
-                                    </div>
-                                @endif
-                            </div>
-                            @if ($episode->companion->verified_at)
-                                <small class="text-muted d-block mt-1 font-monospace tabular-nums">
-                                    Verificado: {{ $episode->companion->verified_at->format('d/m/Y H:i') }}
-                                    @if ($episode->companion->verifiedBy)
-                                        por {{ $episode->companion->verifiedBy->name }}
-                                    @endif
-                                </small>
+                @if (session('generated_pin'))
+                    <div class="alert alert-info py-1 px-2 small mb-2 d-flex align-items-center justify-content-between">
+                        <div>
+                            <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>PIN emitido: <strong class="font-monospace fs-6">{{ session('generated_pin') }}</strong>
+                        </div>
+                        <span class="badge bg-primary">Activo</span>
+                    </div>
+                @endif
+
+                {{-- Credenciales de Consulta Web para el Acompañante --}}
+                <div class="p-2 mb-2 rounded border border-primary-subtle bg-light">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-uppercase fw-bold text-primary" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                            <i class="bi bi-ticket-perforated me-1" aria-hidden="true"></i>Credenciales de Consulta Web
+                        </span>
+                        <a href="{{ route('companion.login') }}" target="_blank" class="small text-decoration-none" style="font-size: 0.72rem;" title="Abrir portal de acompañantes">
+                            Portal: <span class="font-monospace">/acompanante</span> <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    <div class="row g-2 align-items-center">
+                        <div class="col-6">
+                            <span class="text-muted d-block" style="font-size: 0.7rem;">1. Código Paciente</span>
+                            <span class="font-monospace fw-bold text-dark bg-white px-2 py-1 border rounded d-inline-block text-truncate w-100 text-center" style="font-size: 0.85rem;" title="Código público del episodio">{{ $episode->public_code }}</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block" style="font-size: 0.7rem;">2. PIN de Acceso</span>
+                            @if ($episode->companion?->revoked_at)
+                                <span class="badge bg-danger d-inline-block py-1 px-2 w-100 text-center">Revocado</span>
+                            @else
+                                <span class="font-monospace fw-bold text-success bg-white px-2 py-1 border rounded d-inline-block text-truncate w-100 text-center" style="font-size: 0.85rem;" title="PIN para ingresar al portal">{{ $episode->getCompanionPin() }}</span>
                             @endif
+                        </div>
+                    </div>
+                    <div class="mt-2 text-muted" style="font-size: 0.7rem;">
+                        <i class="bi bi-info-circle me-1" aria-hidden="true"></i><strong>Fuente:</strong> {{ $episode->getCompanionPinSourceDescription() }}
+                    </div>
+                </div>
+
+                {{-- Acciones sobre el PIN y Acceso --}}
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-1 mb-1">
+                        <span class="text-muted small">Estado de Acceso:</span>
+                        @if ($episode->companion?->revoked_at)
+                            <span class="badge bg-danger">Revocado</span>
+                        @elseif ($episode->companion?->pin_hash || !empty($episode->companion?->pin))
+                            <span class="badge bg-success"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>PIN Asignado</span>
                         @else
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                                <span class="badge bg-secondary">Sin PIN Emitido</span>
-                                @if ($episode->isOpen())
-                                    <form method="POST" action="{{ route('episodes.companion.pin', $episode) }}" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-primary py-0 px-2" style="font-size: 0.75rem;">
-                                            <i class="bi bi-key me-1" aria-hidden="true"></i>Generar PIN
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
+                            <span class="badge bg-secondary"><i class="bi bi-shield me-1" aria-hidden="true"></i>Dígitos Documento</span>
                         @endif
                     </div>
 
-                    <hr class="my-2">
+                    @if ($episode->isOpen())
+                        @can('manageCompanionAccess', $episode)
+                            <div class="d-flex flex-wrap gap-1 mt-2">
+                                <form method="POST" action="{{ route('episodes.companion.pin', $episode) }}" class="d-inline" onsubmit="return confirm('¿Restablecer el PIN a los últimos 4 dígitos del documento del paciente?');">
+                                    @csrf
+                                    <input type="hidden" name="mode" value="default">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.72rem;" title="Restablecer PIN a dígitos del documento">
+                                        <i class="bi bi-card-text me-1" aria-hidden="true"></i>Usar Doc.
+                                    </button>
+                                </form>
 
-                    {{-- Consentimiento de Compartir Información Clínica (Ley 1581) --}}
-                    <div>
-                        <span class="text-muted small d-block mb-1">Compartir Información Clínica:</span>
-                        @if ($episode->hasActiveCompanionConsent())
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                                <span class="badge bg-success">Autorizado</span>
-                                @if ($episode->isOpen())
-                                    <form method="POST" action="{{ route('episodes.companion.consent', $episode) }}" class="d-inline" onsubmit="return confirm('¿Revocar la autorización del paciente para compartir información clínica con el acompañante?');">
+                                <form method="POST" action="{{ route('episodes.companion.pin', $episode) }}" class="d-inline" onsubmit="return confirm('¿Generar un nuevo PIN aleatorio de 6 dígitos para el acompañante?');">
+                                    @csrf
+                                    <input type="hidden" name="mode" value="random">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.72rem;" title="Generar PIN aleatorio de 6 dígitos">
+                                        <i class="bi bi-key me-1" aria-hidden="true"></i>PIN 6 dígitos
+                                    </button>
+                                </form>
+
+                                @if (! $episode->companion?->revoked_at)
+                                    <form method="POST" action="{{ route('episodes.companion.revoke', $episode) }}" class="d-inline ms-auto" onsubmit="return confirm('¿Revocar el acceso del acompañante a este episodio?');">
                                         @csrf
-                                        <input type="hidden" name="enable" value="0">
-                                        <button type="submit" class="btn btn-outline-warning py-0 px-2" style="font-size: 0.75rem;">
-                                            <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Revocar
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.72rem;" title="Revocar Acceso">
+                                            <i class="bi bi-slash-circle me-1" aria-hidden="true"></i>Revocar
                                         </button>
                                     </form>
                                 @endif
                             </div>
-                            <small class="text-muted d-block mt-1">
-                                Otorgado el {{ $episode->activeCompanionConsent()?->granted_at?->format('d/m/Y H:i') }}
-                            </small>
-                        @else
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                                <span class="badge bg-secondary">No Autorizado</span>
-                                @if ($episode->isOpen())
+                        @endcan
+                    @endif
+
+                    @if ($episode->companion?->revoked_at)
+                        <small class="text-danger d-block mt-1" style="font-size: 0.7rem;">Revocado el {{ $episode->companion->revoked_at->format('d/m/Y H:i') }}</small>
+                    @elseif ($episode->companion?->verified_at)
+                        <small class="text-muted d-block mt-1 font-monospace tabular-nums" style="font-size: 0.7rem;">
+                            Validado en sala: {{ $episode->companion->verified_at->format('d/m/Y H:i') }}
+                            @if ($episode->companion->verifiedBy)
+                                por {{ $episode->companion->verifiedBy->name }}
+                            @endif
+                        </small>
+                    @endif
+                </div>
+
+                <hr class="my-2">
+
+                {{-- Consentimiento de Compartir Información Clínica (Ley 1581 / Res. 1995) --}}
+                <div>
+                    <span class="text-muted small d-block mb-1">Compartir Información Clínica:</span>
+                    @if ($episode->hasActiveCompanionConsent())
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                            <span class="badge bg-success"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Autorizado</span>
+                            @if ($episode->isOpen())
+                                @can('manageCompanionConsent', $episode)
+                                    <form method="POST" action="{{ route('episodes.companion.consent', $episode) }}" class="d-inline" onsubmit="return confirm('¿Revocar la autorización del paciente para compartir información clínica con el acompañante?');">
+                                        @csrf
+                                        <input type="hidden" name="enable" value="0">
+                                        <button type="submit" class="btn btn-outline-warning py-0 px-2" style="font-size: 0.72rem;">
+                                            <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Revocar Permiso
+                                        </button>
+                                    </form>
+                                @endcan
+                            @endif
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">
+                            Otorgado el {{ $episode->activeCompanionConsent()?->granted_at?->format('d/m/Y H:i') }}
+                        </small>
+                    @else
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                            <span class="badge bg-secondary"><i class="bi bi-lock me-1" aria-hidden="true"></i>Solo Estado Básico</span>
+                            @if ($episode->isOpen())
+                                @can('manageCompanionConsent', $episode)
                                     <form method="POST" action="{{ route('episodes.companion.consent', $episode) }}" class="d-inline">
                                         @csrf
                                         <input type="hidden" name="enable" value="1">
                                         <input type="hidden" name="granted_by" value="paciente">
-                                        <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 0.75rem;">
-                                            <i class="bi bi-check2 me-1" aria-hidden="true"></i>Autorizar
+                                        <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 0.72rem;">
+                                            <i class="bi bi-check2 me-1" aria-hidden="true"></i>Dar Permiso
                                         </button>
                                     </form>
-                                @endif
-                            </div>
-                            <small class="text-muted d-block mt-1">Solo visualiza estado operativo básico.</small>
-                        @endif
-                    </div>
-
-                @else
-                    <span class="text-muted">Sin datos de acompañante registrados.</span>
-                @endif
+                                @endcan
+                            @endif
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">
+                            Por reserva legal, solo visualiza ubicación y fase general hasta otorgar permiso.
+                        </small>
+                    @endif
+                </div>
             </div>
         </div>
 
@@ -946,5 +997,64 @@
         </div>
     </div>
 </div>
+
+{{-- Modal Confirmación de Generación y Descarga de PDF (Res. 1995/1999 & Ley 1581/2012) --}}
+@can('downloadPdf', $episode)
+<div class="modal fade" id="pdfConfirmationModal" tabindex="-1" aria-labelledby="pdfConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title h6 mb-0" id="pdfConfirmationModalLabel">
+                    <i class="bi bi-file-earmark-pdf-fill me-2" aria-hidden="true"></i>Copia Oficial de Historia Clínica (PDF)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="alert alert-warning border-warning d-flex align-items-start gap-2 mb-3 py-2 px-3">
+                    <i class="bi bi-shield-lock-fill fs-5 text-warning-emphasis flex-shrink-0 mt-1" aria-hidden="true"></i>
+                    <div class="small">
+                        <strong class="d-block mb-1">Aviso Legal y Trazabilidad Forense</strong>
+                        De conformidad con la <strong>Resolución 1995 de 1999</strong> y la <strong>Ley Estatutaria 1581 de 2012</strong>, la historia clínica es un documento privado sometido a reserva legal.
+                    </div>
+                </div>
+
+                <div class="card bg-light border-0 mb-3">
+                    <div class="card-body p-2 small">
+                        <div class="row g-1">
+                            <div class="col-sm-4 text-muted">Episodio:</div>
+                            <div class="col-sm-8 font-monospace fw-bold">{{ $episode->public_code }}</div>
+                            <div class="col-sm-4 text-muted">Paciente:</div>
+                            <div class="col-sm-8 fw-semibold">
+                                @if ($episode->patient)
+                                    {{ $episode->patient->full_name }} ({{ $episode->patient->document_type }} {{ $episode->patient->document_number }})
+                                @else
+                                    <span class="text-danger">PACIENTE NN ({{ $episode->nn_code }})</span>
+                                @endif
+                            </div>
+                            <div class="col-sm-4 text-muted">Solicitante:</div>
+                            <div class="col-sm-8">{{ auth()->user()->name }} <span class="badge bg-secondary">{{ auth()->user()->getRoleNames()->first() ?? 'Usuario' }}</span></div>
+                            <div class="col-sm-4 text-muted">Seguridad:</div>
+                            <div class="col-sm-8 text-danger fw-semibold">Marca de agua diagonal e identificación de sesión</div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="small text-muted mb-0">
+                    Al generar esta copia, se creará un registro de auditoría inmutable vinculando su cuenta, IP y hora exacta. El documento incluye marca de agua diagonal con fines de no repudio.
+                </p>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a href="{{ route('episodes.pdf.stream', $episode) }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-eye me-1" aria-hidden="true"></i>Ver en Navegador
+                </a>
+                <a href="{{ route('episodes.pdf.download', $episode) }}" class="btn btn-sm btn-danger shadow-sm">
+                    <i class="bi bi-download me-1" aria-hidden="true"></i>Descargar PDF Oficial
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+@endcan
 
 @endsection

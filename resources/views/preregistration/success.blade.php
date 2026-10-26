@@ -14,7 +14,7 @@
                 </div>
                 <h1 class="h2 fw-bold text-dark mb-2">Pre-registro Registrado Exitosamente</h1>
                 <p class="text-muted fs-5 mb-4">
-                    Su solicitud ha sido ingresada en el sistema de recepción del servicio de urgencias del Hospital El Salvador de Ubaté.
+                    Su solicitud ha sido ingresada en el sistema de recepción del servicio de urgencias del Hospital de Ubaté.
                 </p>
 
                 {{-- Código Público Destacado --}}

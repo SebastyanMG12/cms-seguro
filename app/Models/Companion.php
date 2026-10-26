@@ -15,6 +15,7 @@ class Companion extends Model
         'name',
         'phone',
         'relationship',
+        'pin',
         'pin_hash',
         'verified_by_user_id',
         'verified_at',
@@ -23,6 +24,7 @@ class Companion extends Model
 
     protected $casts = [
         'phone' => 'encrypted',
+        'pin' => 'encrypted',
         'verified_at' => 'datetime',
         'revoked_at' => 'datetime',
     ];

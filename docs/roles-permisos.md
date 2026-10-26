@@ -37,6 +37,8 @@ El diseño de control de acceso se basa en el principio de menor privilegio (Pri
 | `episodios.asignar_camilla` | Asignar camilla hospitalaria a paciente ingresado | ✗ | **✓** | ✗ | **✓** | **✓** | ✗ | ✗ | ✗ |
 | `episodios.crear_nn` | Registrar ingreso de emergencia para paciente no identificado (NN) | **✓** | **✓** | ✗ | **✓** | **✓** | **✓** | ✗ | ✗ |
 | `episodios.conciliar` | Conciliar y vincular identidad verificada a episodio NN | **✓** | **✓** | ✗ | **✓** | ✗ | **✓** | ✗ | ✗ |
+| `episodios.pdf` | Generar y descargar historia clínica oficial en PDF con marca de agua | **✓** | **✓** | **✓** | **✓** | ✗ | ✗ | ✗ | ✗ |
+| `reportes.ver` | Visualizar tablero de tiempos de triage (Res. 5596) y métricas de urgencias | **✓** | **✓** | **✓** | ✗ | ✗ | ✗ | ✗ | ✗ |
 
 ---
 

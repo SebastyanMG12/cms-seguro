@@ -70,7 +70,7 @@ class TwoFactorChallengeController extends Controller
 
         Audit::log('login');
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->route('dashboard');
     }
 
     private function pendingUser(Request $request): ?User
