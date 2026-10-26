@@ -65,10 +65,48 @@ class PhysicalResourceService
             $oldStatus = $room->status;
             $room->forceFill(['status' => $newStatus])->save();
 
+            // Sincronizar camillas según requerimiento:
+            // Cuando se inhabilita una habitación, se inhabilitan sus camillas no ocupadas
+            if ($newStatus === 'fuera_de_servicio') {
+                $room->beds()->where('status', '!=', Bed::STATUS_OCUPADA)
+                    ->update(['status' => Bed::STATUS_FUERA_DE_SERVICIO]);
+            } elseif ($newStatus === 'mantenimiento') {
+                $room->beds()->where('status', '!=', Bed::STATUS_OCUPADA)
+                    ->update(['status' => Bed::STATUS_MANTENIMIENTO]);
+            } elseif ($newStatus === 'disponible') {
+                $room->beds()->whereIn('status', [Bed::STATUS_FUERA_DE_SERVICIO, Bed::STATUS_MANTENIMIENTO])
+                    ->update(['status' => Bed::STATUS_DISPONIBLE]);
+            }
+
             Audit::log('room_status_changed', $room, [
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
             ]);
+
+            return $room;
+        });
+    }
+
+    public function updateRoom(Room $room, array $data): Room
+    {
+        return DB::transaction(function () use ($room, $data): Room {
+            if (isset($data['capacity'])) {
+                $currentBedsCount = $room->beds()->count();
+                if ($data['capacity'] < $currentBedsCount) {
+                    throw ValidationException::withMessages([
+                        'capacity' => "La capacidad ({$data['capacity']}) no puede ser menor al número actual de camillas ({$currentBedsCount}).",
+                    ]);
+                }
+                $room->capacity = (int) $data['capacity'];
+            }
+
+            if (isset($data['status'])) {
+                $room->status = $data['status'];
+            }
+
+            $room->save();
+
+            Audit::log('room_updated', $room, ['capacity' => $room->capacity]);
 
             return $room;
         });
@@ -80,12 +118,16 @@ class PhysicalResourceService
         $roomCode = $room->code;
         $existingCount = Bed::withTrashed()->where('room_id', $room->id)->count();
 
-        $letter = chr(65 + ($existingCount % 26));
-        if ($existingCount >= 26) {
-            $letter .= (int) floor($existingCount / 26);
-        }
+        do {
+            $letter = chr(65 + ($existingCount % 26));
+            if ($existingCount >= 26) {
+                $letter .= (int) floor($existingCount / 26);
+            }
+            $code = sprintf('P%s-%s-%s', $floorNumber, $roomCode, $letter);
+            $existingCount++;
+        } while (Bed::withTrashed()->where('code', $code)->exists());
 
-        return sprintf('P%s-%s-%s', $floorNumber, $roomCode, $letter);
+        return $code;
     }
 
     public function createBed(Room $room): Bed
@@ -107,6 +149,22 @@ class PhysicalResourceService
             Audit::log('bed_created', $bed, ['code' => $code]);
 
             return $bed;
+        });
+    }
+
+    public function deleteBed(Bed $bed): void
+    {
+        if ($bed->status === Bed::STATUS_OCUPADA || $bed->activeAssignment()->exists()) {
+            throw ValidationException::withMessages([
+                'bed' => "No se puede eliminar la camilla {$bed->code} porque está ocupada por un paciente.",
+            ]);
+        }
+
+        DB::transaction(function () use ($bed): void {
+            $bedCode = $bed->code;
+            $bed->delete();
+
+            Audit::log('bed_deleted', $bed, ['code' => $bedCode]);
         });
     }
 

@@ -122,12 +122,18 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::post('/habitaciones/{room}/estado', [PhysicalResourceController::class, 'updateRoomStatus'])
         ->whereNumber('room')
         ->name('rooms.update-status');
+    Route::put('/habitaciones/{room}', [PhysicalResourceController::class, 'updateRoom'])
+        ->whereNumber('room')
+        ->name('rooms.update');
     Route::post('/camillas/{bed}/estado', [PhysicalResourceController::class, 'updateBedStatus'])
         ->whereNumber('bed')
         ->name('beds.update-status');
     Route::post('/camillas/{bed}/liberar', [PhysicalResourceController::class, 'releaseBed'])
         ->whereNumber('bed')
         ->name('beds.release');
+    Route::delete('/camillas/{bed}', [PhysicalResourceController::class, 'destroyBed'])
+        ->whereNumber('bed')
+        ->name('beds.destroy');
 
     // Personal asistencial y turnos
     Route::get('/personal', [StaffController::class, 'index'])->name('staff.index');

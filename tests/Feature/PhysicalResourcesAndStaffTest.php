@@ -386,4 +386,93 @@ class PhysicalResourcesAndStaffTest extends TestCase
         $startResponse->assertRedirect();
         $this->assertSame('activo', $shift->fresh()->status);
     }
+
+    public function test_inhabilitating_room_synchronizes_its_beds_to_fuera_de_servicio(): void
+    {
+        $admin = $this->user('administrador');
+        $hierarchy = $this->createHospitalHierarchy();
+        $room = $hierarchy['room'];
+        $resourceService = app(PhysicalResourceService::class);
+        $bed1 = $resourceService->createBed($room);
+
+        $this->assertSame(Bed::STATUS_DISPONIBLE, $bed1->status);
+
+        // Inhabilitar habitación vía HTTP
+        $response = $this->actingAs($admin)->post("/habitaciones/{$room->id}/estado", [
+            'status' => 'fuera_de_servicio',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('fuera_de_servicio', $room->fresh()->status);
+        $this->assertSame(Bed::STATUS_FUERA_DE_SERVICIO, $bed1->fresh()->status);
+
+        // Habilitar de nuevo la habitación
+        $this->actingAs($admin)->post("/habitaciones/{$room->id}/estado", [
+            'status' => 'disponible',
+        ]);
+        $this->assertSame('disponible', $room->fresh()->status);
+        $this->assertSame(Bed::STATUS_DISPONIBLE, $bed1->fresh()->status);
+    }
+
+    public function test_admin_can_update_room_capacity_and_add_bed(): void
+    {
+        $admin = $this->user('administrador');
+        $hierarchy = $this->createHospitalHierarchy();
+        $room = $hierarchy['room'];
+        $room->update(['capacity' => 1]);
+
+        $resourceService = app(PhysicalResourceService::class);
+        $bed1 = $resourceService->createBed($room);
+
+        // Intentar agregar cama superando capacidad falla
+        $this->actingAs($admin)->post("/habitaciones/{$room->id}/camillas")
+            ->assertSessionHasErrors('capacity');
+
+        // Ampliar capacidad a 3
+        $this->actingAs($admin)->put("/habitaciones/{$room->id}", [
+            'capacity' => 3,
+        ])->assertRedirect();
+
+        $this->assertSame(3, $room->fresh()->capacity);
+
+        // Ahora agregar camilla es exitoso
+        $this->actingAs($admin)->post("/habitaciones/{$room->id}/camillas")
+            ->assertRedirect();
+        $this->assertCount(2, $room->fresh()->beds);
+    }
+
+    public function test_admin_can_delete_available_bed_and_add_another_bed(): void
+    {
+        $admin = $this->user('administrador');
+        $hierarchy = $this->createHospitalHierarchy();
+        $room = $hierarchy['room'];
+        $resourceService = app(PhysicalResourceService::class);
+        $bed1 = $resourceService->createBed($room);
+
+        // Eliminar camilla
+        $delResponse = $this->actingAs($admin)->delete("/camillas/{$bed1->id}");
+        $delResponse->assertRedirect();
+        $this->assertTrue($bed1->fresh()->trashed());
+
+        // Agregar nueva camilla en el espacio liberado
+        $addResponse = $this->actingAs($admin)->post("/habitaciones/{$room->id}/camillas");
+        $addResponse->assertRedirect();
+
+        // El conteo de camas activas sigue siendo 1
+        $this->assertCount(1, $room->fresh()->beds);
+    }
+
+    public function test_cannot_delete_occupied_bed(): void
+    {
+        $admin = $this->user('administrador');
+        $hierarchy = $this->createHospitalHierarchy();
+        $room = $hierarchy['room'];
+        $resourceService = app(PhysicalResourceService::class);
+        $bed1 = $resourceService->createBed($room);
+
+        $bed1->update(['status' => Bed::STATUS_OCUPADA]);
+
+        $this->expectException(ValidationException::class);
+        $resourceService->deleteBed($bed1);
+    }
 }
