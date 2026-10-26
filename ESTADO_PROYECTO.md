@@ -101,11 +101,12 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
   - Asignación de médico responsable (único) y apoyos de enfermería.
   - Validación de disponibilidad: se impide asignar profesionales con perfil inactivo, en descanso (`en_descanso`) o sin turno activo.
   - Contador dinámico de pacientes activos asignados por profesional (`ClinicalService::countActivePatients`), calculado en tiempo de consulta.
-- **Auditoría de lectura y acceso excepcional**:
-  - Cada visualización de una historia clínica audita el evento `historia.lectura`.
-  - Si un profesional accede a un episodio al cual no está asignado, se exige motivo y se genera auditoría de `historia.acceso_excepcional`.
+- **Auditoría de lectura y control de custodia (Break-Glass)**:
+  - Cada visualización de una historia clínica por el personal tratante asignado audita el evento `historia.lectura`.
+  - Si un médico o enfermero no asignado intenta abrir el episodio por URL directa, el sistema interpone una pantalla de control de acceso (*Break-Glass*) exigiendo motivo asistencial justificado (mínimo 10 caracteres) bajo advertencia médico-legal (Ley 1581/2012 y Res. 1995/1999).
+  - Al ingresar mediante acceso excepcional, se audita `historia.acceso_excepcional` con la causal peritable, y se bloquean de forma estricta las acciones de modificación clínica (`addClinicalEntry`, `assignBed`, `discharge`) garantizando que solo el profesional tratante asignado o la coordinación médica puedan alterar el expediente.
 - **Interfaz de alta densidad y accesibilidad WCAG 2.2 AA**:
-  - Tablero de episodios con pestañas filtradas (`activos`, `en_espera`, `preregistrados`, `egresados`), resaltado del paciente seleccionado en azul (`.selected-patient`).
+  - Tablero de episodios con pestañas filtradas (`mis_pacientes`, `activos`, `en_espera`, `preregistrados`, `egresados`), resaltado del paciente seleccionado en azul (`.selected-patient`).
   - Barra de acciones con habilitación dinámica según el estado del episodio y tooltips explicativos en acciones deshabilitadas; variante de solo lectura para episodios cerrados.
 
 ### Fase 4B: Registro de emergencia para paciente NN y Conciliación de identidad
@@ -131,7 +132,8 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 - **Inmutabilidad Médica (Res. 1995/1999)**: Protección en Eloquent (`booted`) y base de datos contra edición o borrado de evoluciones clínicas; el modelo solo admite adición de notas aclaratorias o anulaciones enlazadas.
 - **Preservación Forense NN**: Al conciliar identidad, el paciente NN original permanece intacto en la tabla `patients` y el código `NN-AAAAMMDD-XXXX` se conserva permanentemente en `emergency_episodes` para garantizar la trazabilidad forense y médico-legal.
 - **Excepción Legal Ley 1581 Art. 10**: Admisión inmediata para salvaguardar la vida sin exigir consentimiento previo a pacientes inconscientes o desorientados, formalizada mediante registro inmutable en `consents`.
-- **Contador Dinámico de Carga**: Evita campos desnormalizados propensos a inconsistencias; calcula los episodios abiertos activos directamente sobre `episode_assignments`.
+- **Control de Custodia Break-Glass**: Barrera de acceso excepcional que impide la consulta pasiva de historias clínicas por profesionales no asignados, exigiendo justificación auditada y bloqueando acciones clínicas en modo consulta.
+- **Contador Dinámico de Carga**: Evita campos desnormalizados propensos a inconsistencias; calcula los episodios abiertos activos directamente sobre `episode_assignments` con `distinct('episode_id')`.
 - **Diseño sin Emojis y Accesible**: Reemplazo total de emojis por iconografía lineal Bootstrap Icons local compilada con Vite, tokens de diseño con contraste verificado >= 4.5:1 y objetivos táctiles de 44px.
 
 ---
@@ -145,13 +147,13 @@ Documento de seguimiento del estado del sistema, fases ejecutadas, decisiones t�
 ---
 
 ## 5. Última prueba exitosa
-- **Fecha y hora:** 2026-10-25 20:27:28 -05:00
+- **Fecha y hora:** 2026-10-25 20:49:58 -05:00
 - **Comando ejecutado:** `php artisan test`
-- **Resultado:** 108 pasadas, 0 fallidas (423 aserciones). Tiempo: 52.11s
+- **Resultado:** 110 pasadas, 0 fallidas (430 aserciones). Tiempo: 54.23s
   - `Tests\Unit\ExampleTest`: 1 pasada
   - `Tests\Feature\ExampleTest`: 1 pasada
   - `Tests\Feature\IdentityReconciliationTest`: 13 pasadas
-  - `Tests\Feature\MedicalEpisodeTest`: 19 pasadas
+  - `Tests\Feature\MedicalEpisodeTest`: 21 pasadas
   - `Tests\Feature\PhysicalResourcesAndStaffTest`: 16 pasadas
   - `Tests\Feature\PreregistrationTest`: 15 pasadas
   - `Tests\Feature\SecurityTest`: 38 pasadas
