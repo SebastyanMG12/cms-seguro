@@ -1,0 +1,672 @@
+=== composer check-platform-reqs ===
+Checking platform requirements for packages in the vendor dir
+composer-runtime-api 2.2.2      success                                       
+ext-bcmath           8.3.36     success                                       
+ext-ctype            *          success provided by symfony/polyfill-ctype    
+ext-dom              20031129   success                                       
+ext-fileinfo         8.3.36     success                                       
+ext-filter           8.3.36     success                                       
+ext-hash             8.3.36     success                                       
+ext-iconv            8.3.36     success                                       
+ext-json             8.3.36     success                                       
+ext-libxml           8.3.36     success                                       
+ext-mbstring         *          success provided by symfony/polyfill-mbstring 
+ext-openssl          8.3.36     success                                       
+ext-pcre             8.3.36     success                                       
+ext-phar             8.3.36     success                                       
+ext-session          8.3.36     success                                       
+ext-tokenizer        8.3.36     success                                       
+ext-xml              8.3.36     success                                       
+ext-xmlwriter        8.3.36     success                                       
+ext-zip              1.22.3     success                                       
+php                  8.3.36     success                                       
+
+
+
+=== php -m ===
+[PHP Modules]
+bcmath
+calendar
+Core
+ctype
+curl
+date
+dom
+fileinfo
+filter
+gd
+hash
+iconv
+json
+libxml
+mbstring
+mysqlnd
+openssl
+pcre
+PDO
+pdo_pgsql
+pgsql
+Phar
+random
+readline
+Reflection
+session
+SimpleXML
+SPL
+standard
+tokenizer
+xml
+xmlreader
+xmlwriter
+zip
+zlib
+
+[Zend Modules]
+
+
+
+
+=== php -v ===
+PHP 8.3.36 (cli) (built: Oct 26 2026 09:51:04) (ZTS Visual C++ 2019 x64)
+Copyright (c) The PHP Group
+Zend Engine v4.3.36, Copyright (c) Zend Technologies
+
+
+
+=== composer audit ===
+Found 8 security vulnerability advisories affecting 5 packages:
++-------------------+----------------------------------------------------------------------------------+
+| Package           | symfony/http-foundation                                                          |
+| Severity          |                                                                                  |
+| Advisory ID       | PKSA-24ph-xkrh-y79j                                                              |
+| CVE               | CVE-2026-118514                                                                  |
+| Title             | CVE-2026-118514: HEAD Requests Bypass the methods Option of                      |
+|                   | security.access_control Rules and Firewalls: Incomplete Fix for CVE-2026-45075   |
+| URL               | https://symfony.com/cve-2026-118514                                              |
+| Affected versions | >=2.0.0,<3.0.0|>=3.0.0,<4.0.0|>=4.0.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2 |
+|                   | .0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.56|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,< |
+|                   | 6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.50|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3. |
+|                   | 0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11                  |
+| Reported at       | 2026-11-04T10:45:07+00:00                                                        |
++-------------------+----------------------------------------------------------------------------------+
++-------------------+----------------------------------------------------------------------------------+
+| Package           | symfony/http-foundation                                                          |
+| Severity          |                                                                                  |
+| Advisory ID       | PKSA-pr6q-2w5s-kzzf                                                              |
+| CVE               | NO CVE                                                                           |
+| Title             | Path Rules Enforced in Front of PHP Can Be Bypassed by Appending the Path to the |
+|                   | Script Name                                                                      |
+| URL               | https://github.com/symfony/symfony/security/advisories/GHSA-3h27-hjv7-fqjx       |
+| Affected versions | >=5.4.50,<5.4.56|>=6.4.29,<6.4.50|>=7.3.7,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0| |
+|                   | >=8.1.0,<8.1.11                                                                  |
+| Reported at       | 2026-11-04T00:00:00+00:00                                                        |
++-------------------+----------------------------------------------------------------------------------+
++-------------------+----------------------------------------------------------------------------------+
+| Package           | symfony/http-foundation                                                          |
+| Severity          |                                                                                  |
+| Advisory ID       | PKSA-nxjs-s6hn-vb6m                                                              |
+| CVE               | NO CVE                                                                           |
+| Title             | The "private_ranges" Trusted Proxies Shortcut Trusts Clients Presenting an       |
+|                   | IPv4-Mapped, 6to4, Teredo or NAT64 Address as Reverse Proxies                    |
+| URL               | https://github.com/symfony/symfony/security/advisories/GHSA-xg2q-4rrq-657q       |
+| Affected versions | >=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11     |
+| Reported at       | 2026-11-04T00:00:00+00:00                                                        |
++-------------------+----------------------------------------------------------------------------------+
++-------------------+----------------------------------------------------------------------------------+
+| Package           | symfony/http-foundation                                                          |
+| Severity          |                                                                                  |
+| Advisory ID       | PKSA-b2gg-vk1g-6d5q                                                              |
+| CVE               | NO CVE                                                                           |
+| Title             | Generated URLs Can Point to a Host Chosen by the Client                          |
+| URL               | https://github.com/symfony/symfony/security/advisories/GHSA-5mx8-mwrp-5693       |
+| Affected versions | >=2.0.0,<2.1.0|>=2.1.0,<2.2.0|>=2.2.0,<2.3.0|>=2.3.0,<2.4.0|>=2.4.0,<2.5.0|>=2.5 |
+|                   | .0,<2.6.0|>=2.6.0,<2.7.0|>=2.7.0,<2.8.0|>=2.8.0,<3.0.0|>=3.0.0,<3.1.0|>=3.1.0,<3 |
+|                   | .2.0|>=3.2.0,<3.3.0|>=3.3.0,<3.4.0|>=3.4.0,<4.0.0|>=4.0.0,<4.1.0|>=4.1.0,<4.2.0| |
+|                   | >=4.2.0,<4.3.0|>=4.3.0,<4.4.0|>=4.4.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2 |
+|                   | .0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.56|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,< |
+|                   | 6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.50|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3. |
+|                   | 0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11                  |
+| Reported at       | 2026-11-04T00:00:00+00:00                                                        |
++-------------------+----------------------------------------------------------------------------------+
++-------------------+----------------------------------------------------------------------------------+
+| Package           | symfony/http-kernel                                                              |
+| Severity          |                                                                                  |
+| Advisory ID       | PKSA-3gxv-7xhq-mgmz                                                              |
+| CVE               | CVE-2026-123339                                                                  |
+| Title             | Inline Fragments Let Untrusted Forwarded Headers Set the Host, Scheme and Port   |
+|                   | of the URLs Generated for the Main Request                                       |
+| URL               | https://github.com/symfony/symfony/security/advisories/GHSA-wg5q-m2ww-f3c9       |
+| Affected versions | >=2.8.44,<3.0.0|>=3.4.14,<4.0.0|>=4.0.14,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>= |
+|                   | 5.2.0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.56|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2. |
+|                   | 0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.50|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7 |
+|                   | .3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11               |
+| Reported at       | 2026-11-04T10:45:07+00:00                                                        |
++-------------------+----------------------------------------------------------------------------------+
++-------------------+----------------------------------------------------------------------------------+
+| Package           | symfony/mime                                                                     |
+| Severity          | medium                                                                           |
+| Advisory ID       | PKSA-wtxr-p26d-nn42                                                              |
+| CVE               | CVE-2026-45070                                                                   |
+| Title             | CVE-2026-45070: Email Header Injection via Non-Token Characters in Mime          |
+|                   | Parameter Names                                                                  |
+| URL               | https://symfony.com/cve-2026-45070                                               |
+| Affected versions | >=2.0.0,<3.0.0|>=3.0.0,<4.0.0|>=4.0.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2 |
+|                   | .0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.55|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,< |
+|                   | 6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.49|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3. |
+|                   | 0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.22|>=8.0.0,<8.1.0|>=8.1.0,<8.1.10                  |
+| Reported at       | 2026-10-28T18:08:54+00:00                                                        |
++-------------------+----------------------------------------------------------------------------------+
++-------------------+----------------------------------------------------------------------------------+
+| Package           | symfony/routing                                                                  |
+| Severity          |                                                                                  |
+| Advisory ID       | PKSA-y8c5-1b7f-r1gj                                                              |
+| CVE               | CVE-2026-118516                                                                  |
+| Title             | CVE-2026-118516: Host Placeholders Can Match the Start of the Path in Compiled   |
+|                   | URL Matchers, Bypassing Path-Based Access Control                                |
+| URL               | https://symfony.com/cve-2026-118516                                              |
+| Affected versions | >=4.1.0,<4.2.0|>=4.2.0,<4.3.0|>=4.3.0,<4.4.0|>=4.4.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1 |
+|                   | .0,<5.2.0|>=5.2.0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.56|>=6.0.0,<6.1.0|>=6.1.0,< |
+|                   | 6.2.0|>=6.2.0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.50|>=7.0.0,<7.1.0|>=7.1.0,<7.2. |
+|                   | 0|>=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11   |
+| Reported at       | 2026-11-04T10:45:07+00:00                                                        |
++-------------------+----------------------------------------------------------------------------------+
++-------------------+----------------------------------------------------------------------------------+
+| Package           | symfony/yaml                                                                     |
+| Severity          |                                                                                  |
+| Advisory ID       | PKSA-nktx-f1n1-b4yd                                                              |
+| CVE               | CVE-2026-123792                                                                  |
+| Title             | Exponential and Quadratic Parse Times in the YAML Parser Let a Single Document   |
+|                   | Hold a Process                                                                   |
+| URL               | https://github.com/symfony/symfony/security/advisories/GHSA-hwfg-qwvh-2wfx       |
+| Affected versions | >=2.0.0,<3.0.0|>=3.0.0,<4.0.0|>=4.0.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2 |
+|                   | .0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.56|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,< |
+|                   | 6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.50|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3. |
+|                   | 0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11                  |
+| Reported at       | 2026-11-04T10:45:07+00:00                                                        |
++-------------------+----------------------------------------------------------------------------------+
+Found 2 abandoned packages:
++--------------------------+----------------------------------------------------------------------------------+
+| Abandoned Package        | Suggested Replacement                                                            |
++--------------------------+----------------------------------------------------------------------------------+
+| dragon-code/pretty-array | symfony/var-exporter                                                             |
+| dragon-code/support      | illuminate/support                                                               |
++--------------------------+----------------------------------------------------------------------------------+
+
+
+
+=== npm audit ===
+# npm audit report
+
+follow-redirects  1.16.0 - 1.16.1
+Severity: high
+follow-redirects: Cross-realm sensitiveHeaders arrays are discarded and custom credentials can follow redirects - https://github.com/advisories/GHSA-mrwp-f3q8-3g9p
+fix available via `npm audit fix`
+node_modules/follow-redirects
+
+1 high severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+
+
+=== php artisan about ===
+
+  Environment ........................................................................................................  
+  Application Name ................................................................................. Hospital de Ubaté  
+  Laravel Version ............................................................................................ 12.70.0  
+  PHP Version ................................................................................................. 8.3.36  
+  Composer Version ............................................................................................ 2.10.3  
+  Environment .................................................................................................. local  
+  Debug Mode ................................................................................................. ENABLED  
+  URL ................................................................................................. 127.0.0.1:8000  
+  Maintenance Mode ............................................................................................... OFF  
+  Timezone ............................................................................................ America/Bogota  
+  Locale .......................................................................................................... es  
+
+  Cache ..............................................................................................................  
+  Config .................................................................................................. NOT CACHED  
+  Events .................................................................................................. NOT CACHED  
+  Routes .................................................................................................. NOT CACHED  
+  Views ....................................................................................................... CACHED  
+
+  Drivers ............................................................................................................  
+  Broadcasting ................................................................................................... log  
+  Cache ..................................................................................................... database  
+  Database ..................................................................................................... pgsql  
+  Logs ................................................................................................ stack / single  
+  Mail .......................................................................................................... smtp  
+  Queue ..................................................................................................... database  
+  Session ................................................................................................... database  
+
+  Storage ............................................................................................................  
+  C:\xampp\htdocs\cms-seguro\public\storage ............................................................... NOT LINKED  
+
+  Locales ............................................................................................................  
+  Installed ................................................................................................... en, es  
+  LaravelLang\Lang\Plugin .................................................................................... 15.37.4  
+  Locales Version ............................................................................................. 2.11.0  
+  Protected ................................................................................................... en, es  
+  Publisher Version ........................................................................................... 16.8.0  
+
+  Spatie Permissions .................................................................................................  
+  Features Enabled ........................................................................................... Default  
+  Version ..................................................................................................... 6.25.0  
+
+
+
+
+=== php artisan route:list -v ===
+
+  GET|HEAD        / ....................................................................... home › PageController@home
+                  ⇂ web
+  GET|HEAD        acerca ................................................................ about › PageController@about
+                  ⇂ web
+  GET|HEAD        acompanante ......................... companion.login › Public\CompanionTrackingController@loginForm
+                  ⇂ web
+  POST            acompanante ....................... companion.auth › Public\CompanionTrackingController@authenticate
+                  ⇂ web
+                  ⇂ throttle:10,1
+  GET|HEAD        acompanante/estado .................... companion.status › Public\CompanionTrackingController@status
+                  ⇂ web
+  POST            acompanante/salir ..................... companion.logout › Public\CompanionTrackingController@logout
+                  ⇂ web
+  GET|HEAD        admin .................................................................... admin › routes/web.php:93
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        admin/usuarios ...................................... admin.users.index › Admin\UserController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            admin/usuarios ...................................... admin.users.store › Admin\UserController@store
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        admin/usuarios/crear .............................. admin.users.create › Admin\UserController@create
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  PUT             admin/usuarios/{user} ............................. admin.users.update › Admin\UserController@update
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  DELETE          admin/usuarios/{user} ........................... admin.users.destroy › Admin\UserController@destroy
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        admin/usuarios/{user}/editar .......................... admin.users.edit › Admin\UserController@edit
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            admin/usuarios/{user}/reactivar ........... admin.users.reactivate › Admin\UserController@reactivate
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            admin/usuarios/{user}/restablecer-2fa .. admin.users.reset-2fa › Admin\UserController@resetTwoFactor
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            admin/usuarios/{user}/restablecer-contrasena admin.users.reset-password › Admin\UserController@resetPassword
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            admin/usuarios/{user}/suspender ................. admin.users.suspend › Admin\UserController@suspend
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        auditoria ................................................... audit.index › AuditLogController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  DELETE          camillas/{bed} ....................... beds.destroy › Hospital\PhysicalResourceController@destroyBed
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            camillas/{bed}/estado ..... beds.update-status › Hospital\PhysicalResourceController@updateBedStatus
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            camillas/{bed}/liberar ............... beds.release › Hospital\PhysicalResourceController@releaseBed
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        contacto ................................................. contact.create › ContactController@create
+                  ⇂ web
+  POST            contacto ................................................... contact.store › ContactController@store
+                  ⇂ web
+                  ⇂ throttle:5,1
+  GET|HEAD        correos ............................................... emails.index › ReceivedEmailController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            correos/sincronizar ..................................... emails.sync › ReceivedEmailController@sync
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        correos/{email} ......................................... emails.show › ReceivedEmailController@show
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        dashboard .................................................... dashboard › DashboardController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  ANY             docs ....................................................... Illuminate\Routing › RedirectController
+                  ⇂ web
+  GET|HEAD        documentacion ......................................... documentation › PageController@documentation
+                  ⇂ web
+  GET|HEAD        episodios ................................. episodes.index › Hospital\MedicalEpisodeController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        episodios/pacientes/buscar .. episodes.patient.search › Hospital\EmergencyNnController@searchPatient
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        episodios/registro-nn ................... episodes.nn.create › Hospital\EmergencyNnController@create
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/registro-nn ..................... episodes.nn.store › Hospital\EmergencyNnController@store
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        episodios/{episode} ......................... episodes.show › Hospital\MedicalEpisodeController@show
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/acompanante episodes.companion.update › Hospital\MedicalEpisodeController@updateCompanion
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/acompanante/consentimiento episodes.companion.consent › Hospital\CompanionManagementController@toggleConsent
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/acompanante/pin episodes.companion.pin › Hospital\CompanionManagementController@generatePin
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/acompanante/revocar episodes.companion.revoke › Hospital\CompanionManagementController@revokeAccess
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/camilla ...... episodes.bed.assign › Hospital\MedicalEpisodeController@assignBed
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        episodios/{episode}/conciliar episodes.reconcile.create › Hospital\EmergencyNnController@showReconcileForm
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/conciliar .. episodes.reconcile.store › Hospital\EmergencyNnController@reconcile
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/egreso ........ episodes.discharge › Hospital\MedicalEpisodeController@discharge
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/entradas episodes.entries.store › Hospital\MedicalEpisodeController@addClinicalEntry
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/ingreso episodes.admission › Hospital\MedicalEpisodeController@confirmAdmission
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/llegada ... episodes.arrival › Hospital\MedicalEpisodeController@registerArrival
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        episodios/{episode}/pdf ............. episodes.pdf.download › Hospital\EpisodePdfController@download
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        episodios/{episode}/pdf/ver ............. episodes.pdf.stream › Hospital\EpisodePdfController@stream
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/personal . episodes.staff.assign › Hospital\MedicalEpisodeController@assignStaff
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/personal/{assignment}/finalizar episodes.staff.end › Hospital\MedicalEpisodeController@endStaffAssignment
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            episodios/{episode}/triage ........ episodes.triage › Hospital\MedicalEpisodeController@assignTriage
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  PUT             habitaciones/{room} .................. rooms.update › Hospital\PhysicalResourceController@updateRoom
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            habitaciones/{room}/camillas ............. beds.store › Hospital\PhysicalResourceController@storeBed
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            habitaciones/{room}/estado rooms.update-status › Hospital\PhysicalResourceController@updateRoomStatus
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        login .......................................................... login › Auth\LoginController@create
+                  ⇂ web
+                  ⇂ guest
+  POST            login ..................................................... login.store › Auth\LoginController@store
+                  ⇂ web
+                  ⇂ guest
+                  ⇂ throttle:login
+  GET|HEAD        login/2fa .......................... two-factor.challenge › Auth\TwoFactorChallengeController@create
+                  ⇂ web
+                  ⇂ guest
+  POST            login/2fa ..................... two-factor.challenge.store › Auth\TwoFactorChallengeController@store
+                  ⇂ web
+                  ⇂ guest
+                  ⇂ throttle:5,1
+  POST            logout ....................................................... logout › Auth\LoginController@destroy
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        ocupacion ..................................... occupancy.index › Hospital\OccupancyController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        personal .............................................. staff.index › Hospital\StaffController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            personal .............................................. staff.store › Hospital\StaffController@store
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            personal/crear-usuario ................... staff.store-user › Hospital\StaffController@storeWithUser
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  PUT             personal/{profile} .................................. staff.update › Hospital\StaffController@update
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  DELETE          personal/{profile} ................................ staff.destroy › Hospital\StaffController@destroy
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        personal/{profile}/editar ............................... staff.edit › Hospital\StaffController@edit
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            personal/{profile}/estado .............. staff.update-status › Hospital\StaffController@updateStatus
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        posts ........................................................... posts.index › PostController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            posts ........................................................... posts.store › PostController@store
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        posts/create .................................................. posts.create › PostController@create
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        posts/{post} ...................................................... posts.show › PostController@show
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  PUT|PATCH       posts/{post} .................................................. posts.update › PostController@update
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  DELETE          posts/{post} ................................................ posts.destroy › PostController@destroy
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        posts/{post}/edit ................................................. posts.edit › PostController@edit
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        preregistro ......................... preregistro.create › Hospital\PreregistrationController@create
+                  ⇂ web
+  POST            preregistro ........................... preregistro.store › Hospital\PreregistrationController@store
+                  ⇂ web
+                  ⇂ throttle:10,1
+  GET|HEAD        preregistro/exito/{code} .......... preregistro.success › Hospital\PreregistrationController@success
+                  ⇂ web
+  GET|HEAD        recuperar .............................. password.request › Auth\PasswordResetController@requestForm
+                  ⇂ web
+                  ⇂ guest
+  POST            recuperar ................................... password.email › Auth\PasswordResetController@sendCode
+                  ⇂ web
+                  ⇂ guest
+                  ⇂ throttle:5,1
+  GET|HEAD        recuperar/codigo ......................... password.verify › Auth\PasswordResetController@verifyForm
+                  ⇂ web
+                  ⇂ guest
+  POST            recuperar/codigo ................... password.verify.store › Auth\PasswordResetController@verifyCode
+                  ⇂ web
+                  ⇂ guest
+                  ⇂ throttle:10,1
+  GET|HEAD        recuperar/nueva ............................ password.reset › Auth\PasswordResetController@resetForm
+                  ⇂ web
+                  ⇂ guest
+  POST            recuperar/nueva ............................... password.update › Auth\PasswordResetController@reset
+                  ⇂ web
+                  ⇂ guest
+                  ⇂ throttle:5,1
+  GET|HEAD        reportes .................................. reports.index › Hospital\EmergencyReportController@index
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        seguridad/2fa .................................. two-factor.show › Security\TwoFactorController@show
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            seguridad/2fa/confirmar .................. two-factor.confirm › Security\TwoFactorController@confirm
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+                  ⇂ throttle:10,1
+  GET|HEAD        seguridad/password ....................... security.password.edit › Security\PasswordController@edit
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  PUT             seguridad/password ................... security.password.update › Security\PasswordController@update
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        storage/{path} storage.local › vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
+  PUT             storage/{path} storage.local.upload › vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:106
+  POST            turnos ............................................... shifts.store › Hospital\ShiftController@store
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            turnos/{shift}/finalizar ................................. shifts.end › Hospital\ShiftController@end
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  POST            turnos/{shift}/iniciar ............................... shifts.start › Hospital\ShiftController@start
+                  ⇂ web
+                  ⇂ auth
+                  ⇂ active
+                  ⇂ two-factor
+  GET|HEAD        up ..... vendor/laravel/framework/src/Illuminate/Foundation/Configuration/ApplicationBuilder.php:219
+
+                                                                                                   Showing [93] routes
+
+
+
+
+=== php artisan test ===
+Tests:    160 passed (694 assertions)
+Status:   OK (0 failures, 0 errors)
