@@ -92,7 +92,8 @@ class TwoFactorChallengeController extends Controller
     private function consumeRecoveryCode(User $user, string $input): bool
     {
         $input = strtolower(trim($input));
-        $codes = $user->two_factor_recovery_codes ?? [];
+        /** @var array<int, string> $codes */
+        $codes = is_array($user->two_factor_recovery_codes) ? $user->two_factor_recovery_codes : [];
 
         foreach ($codes as $index => $hash) {
             if (Hash::check($input, $hash)) {

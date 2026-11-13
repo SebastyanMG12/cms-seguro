@@ -150,7 +150,6 @@ class UserService
         $activeAdminsCount = User::role('administrador')
             ->where('status', 'active')
             ->lockForUpdate()
-            ->get()
             ->count();
 
         if ($activeAdminsCount <= 1) {
