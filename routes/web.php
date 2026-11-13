@@ -96,6 +96,7 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::resource('posts', PostController::class);
 
     Route::get('/correos', [ReceivedEmailController::class, 'index'])->name('emails.index');
+    Route::post('/correos/sincronizar', [ReceivedEmailController::class, 'sync'])->name('emails.sync');
     Route::get('/correos/{email}', [ReceivedEmailController::class, 'show'])
         ->whereNumber('email')
         ->name('emails.show');

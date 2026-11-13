@@ -3,10 +3,32 @@
 @section('title', 'Correos recibidos')
 
 @section('content')
-<h1 class="h3 mb-3">Correos recibidos</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Correos recibidos</h1>
+        <p class="text-muted small mb-0">Buzón de atención al usuario y mensajes de la cuenta oficial ({{ config('imap.accounts.default.username') }}).</p>
+    </div>
+    <div>
+        <form method="POST" action="{{ route('emails.sync') }}" class="d-inline">
+            @csrf
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Sincronizar buzón
+            </button>
+        </form>
+    </div>
+</div>
+
+@if ($errors->has('sync'))
+    <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>{{ $errors->first('sync') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+@endif
 
 @if ($emails->isEmpty())
-    <div class="alert alert-info">No hay correos. Ejecute <code>php artisan mail:receive</code>.</div>
+    <div class="alert alert-info shadow-sm">
+        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>No hay correos en la bandeja. Pulse en <strong>Sincronizar buzón</strong> para consultar nuevos mensajes desde el servidor de correo.
+    </div>
 @else
     <div class="table-responsive">
         <table class="table table-hover align-middle bg-white shadow-sm">

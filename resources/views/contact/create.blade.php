@@ -16,9 +16,9 @@
                 <div class="card-body p-4">
                     <form method="POST" action="{{ route('contact.store') }}" novalidate>
                         @csrf
-                        <div style="position:absolute;left:-9999px;" aria-hidden="true">
+                        <div style="display: none !important;" aria-hidden="true">
                             <label for="website">No rellenar este campo</label>
-                            <input id="website" type="text" name="website" tabindex="-1" autocomplete="off">
+                            <input id="website" type="text" name="website" tabindex="-1" autocomplete="off" value="">
                         </div>
 
                         <div class="mb-3">
