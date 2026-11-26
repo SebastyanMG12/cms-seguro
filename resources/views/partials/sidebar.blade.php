@@ -53,12 +53,12 @@
         </a>
     @endcan
 
-    @hasrole('administrador|autor')
+    @can('publicaciones.ver')
         <a href="{{ route('posts.index') }}"
             class="list-group-item list-group-item-action {{ request()->routeIs('posts.*') ? 'active' : '' }}">
             <i class="bi bi-journal-text me-1" aria-hidden="true"></i> Publicaciones
         </a>
-    @endhasrole
+    @endcan
 
     <a href="{{ route('documentation') }}"
         class="list-group-item list-group-item-action {{ request()->routeIs('documentation') ? 'active' : '' }}">

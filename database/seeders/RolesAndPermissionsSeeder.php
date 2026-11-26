@@ -37,6 +37,12 @@ class RolesAndPermissionsSeeder extends Seeder
             // Módulo de Reportes y PDF (Fase 6)
             'episodios.pdf',
             'reportes.ver',
+            // Publicaciones institucionales (Fase 6.5)
+            'publicaciones.ver',
+            'publicaciones.crear',
+            'publicaciones.editar',
+            'publicaciones.publicar',
+            'publicaciones.eliminar',
         ];
 
         foreach ($permissions as $name) {
@@ -59,6 +65,11 @@ class RolesAndPermissionsSeeder extends Seeder
                 'episodios.conciliar',
                 'episodios.pdf',
                 'reportes.ver',
+                'publicaciones.ver',
+                'publicaciones.crear',
+                'publicaciones.editar',
+                'publicaciones.publicar',
+                'publicaciones.eliminar',
             ],
             'coordinador' => [
                 'correos.ver',
@@ -115,8 +126,16 @@ class RolesAndPermissionsSeeder extends Seeder
             ],
             'editor' => [
                 'correos.ver',
+                'publicaciones.ver',
+                'publicaciones.crear',
+                'publicaciones.editar',
+                'publicaciones.publicar',
             ],
-            'autor' => [],
+            'autor' => [
+                'publicaciones.ver',
+                'publicaciones.crear',
+                'publicaciones.editar',
+            ],
         ];
 
         foreach ($roles as $roleName => $rolePermissions) {

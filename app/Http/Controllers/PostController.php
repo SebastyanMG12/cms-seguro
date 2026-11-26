@@ -16,15 +16,19 @@ class PostController extends Controller
 {
     public function index(Request $request): View
     {
-        $posts = $request->user()->posts()
-            ->latest()
-            ->paginate(10);
+        Gate::authorize('viewAny', Post::class);
+
+        $posts = $request->user()->hasAnyRole(['administrador', 'editor'])
+            ? Post::with('user')->latest()->paginate(10)
+            : $request->user()->posts()->latest()->paginate(10);
 
         return view('posts.index', compact('posts'));
     }
 
     public function create(): View
     {
+        Gate::authorize('create', Post::class);
+
         return view('posts.create');
     }
 
@@ -35,6 +39,10 @@ class PostController extends Controller
 
         $post = $request->user()->posts()->create($data);
         Audit::log('post_created', $post);
+
+        if ($post->status === 'published') {
+            Audit::log('post_published', $post);
+        }
 
         return redirect()->route('posts.show', $post)
             ->with('success', 'Publicación creada correctamente.');
@@ -58,8 +66,13 @@ class PostController extends Controller
     {
         Gate::authorize('update', $post);
 
+        $wasPublished = $post->status === 'published';
         $post->update($request->validated());
         Audit::log('post_updated', $post);
+
+        if (! $wasPublished && $post->status === 'published') {
+            Audit::log('post_published', $post);
+        }
 
         return redirect()->route('posts.show', $post)
             ->with('success', 'Publicación actualizada correctamente.');

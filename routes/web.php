@@ -20,6 +20,7 @@ use App\Http\Controllers\Hospital\StaffController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\Public\CompanionTrackingController;
+use App\Http\Controllers\Public\PublicNewsController;
 use App\Http\Controllers\ReceivedEmailController;
 use App\Http\Controllers\Security\PasswordController;
 use App\Http\Controllers\Security\TwoFactorController;
@@ -34,6 +35,10 @@ Route::get('/contacto', [ContactController::class, 'create'])->name('contact.cre
 Route::post('/contacto', [ContactController::class, 'store'])
     ->middleware('throttle:5,1')
     ->name('contact.store');
+
+// Portal público de noticias institucionales
+Route::get('/noticias', [PublicNewsController::class, 'index'])->name('news.index');
+Route::get('/noticias/{slug}', [PublicNewsController::class, 'show'])->name('news.show');
 
 // Pre-registro público de urgencias (sin cuenta)
 Route::get('/preregistro', [PreregistrationController::class, 'create'])->name('preregistro.create');

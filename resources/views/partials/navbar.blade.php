@@ -54,6 +54,12 @@
                     </li>
                 @else
                     <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('news.*') ? 'active fw-semibold' : '' }}"
+                            href="{{ route('news.index') }}">
+                            <i class="bi bi-newspaper me-1" aria-hidden="true"></i>Noticias
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('contact.*') ? 'active fw-semibold' : '' }}"
                             href="{{ route('contact.create') }}">
                             <i class="bi bi-envelope me-1" aria-hidden="true"></i>Contacto
