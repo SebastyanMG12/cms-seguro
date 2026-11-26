@@ -17,18 +17,76 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Pre-registro: Control dinámico de tipo y número de documento
+    // 2. Pre-registro: Control dinámico de tipo y número de documento, coherencia con edad
     const docTypeSelect = document.getElementById('document_type');
     const docNumberInput = document.getElementById('document_number');
+    const birthDateInput = document.getElementById('birth_date');
+    const approximateAgeInput = document.getElementById('approximate_age');
     const minorNotice = document.getElementById('minorNotice');
     const companionStatusBadge = document.getElementById('companionStatusBadge');
 
+    function calculateAge() {
+        if (birthDateInput && birthDateInput.value) {
+            const birth = new Date(birthDateInput.value);
+            const today = new Date();
+            let age = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                age--;
+            }
+            return isNaN(age) ? null : age;
+        }
+        if (approximateAgeInput && approximateAgeInput.value !== '') {
+            const val = parseInt(approximateAgeInput.value, 10);
+            return isNaN(val) ? null : val;
+        }
+        return null;
+    }
+
     function updateDocTypeState() {
         if (!docTypeSelect || !docNumberInput) return;
-        const val = docTypeSelect.value;
-        const isMinor = ['Tarjeta de identidad', 'Registro civil', 'Menor sin identificación'].includes(val);
+        const age = calculateAge();
 
-        if (val === 'Menor sin identificación') {
+        // Filtrar / Deshabilitar opciones incompatibles según la edad calculada
+        Array.from(docTypeSelect.options).forEach(opt => {
+            if (!opt.value) return;
+            opt.disabled = false;
+
+            if (age !== null) {
+                // CC: sólo >= 18 años
+                if (opt.value === 'Cédula de ciudadanía' && age < 18) {
+                    opt.disabled = true;
+                }
+                // TI: sólo 7 a 17 años
+                if (opt.value === 'Tarjeta de identidad' && (age < 7 || age >= 18)) {
+                    opt.disabled = true;
+                }
+                // Registro civil: sólo menores (< 18)
+                if (opt.value === 'Registro civil' && age >= 18) {
+                    opt.disabled = true;
+                }
+                // Menor sin identificación: sólo < 18
+                if (opt.value === 'Menor sin identificación' && age >= 18) {
+                    opt.disabled = true;
+                }
+                // CE: a partir de 7 años
+                if (opt.value === 'Cédula de extranjería' && age < 7) {
+                    opt.disabled = true;
+                }
+            }
+        });
+
+        // Si la opción seleccionada quedó deshabilitada, deseleccionarla
+        const selectedOpt = docTypeSelect.selectedOptions[0];
+        if (selectedOpt && selectedOpt.disabled) {
+            docTypeSelect.value = '';
+        }
+
+        const currentVal = docTypeSelect.value;
+        const isMinorByDoc = ['Tarjeta de identidad', 'Registro civil', 'Menor sin identificación'].includes(currentVal);
+        const isMinor = (age !== null && age < 18) || isMinorByDoc;
+
+        if (currentVal === 'Menor sin identificación') {
             docNumberInput.value = '';
             docNumberInput.disabled = true;
             docNumberInput.placeholder = 'No aplica para menor sin identificación';
@@ -52,6 +110,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (docTypeSelect) {
         docTypeSelect.addEventListener('change', updateDocTypeState);
+        if (birthDateInput) {
+            birthDateInput.addEventListener('change', updateDocTypeState);
+        }
+        if (approximateAgeInput) {
+            approximateAgeInput.addEventListener('input', updateDocTypeState);
+        }
         updateDocTypeState();
     }
 

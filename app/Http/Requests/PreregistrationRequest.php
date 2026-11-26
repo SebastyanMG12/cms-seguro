@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\PersonName;
+use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,6 +12,22 @@ class PreregistrationRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('full_name')) {
+            $this->merge([
+                'full_name' => preg_replace('/\s+/', ' ', trim((string) $this->input('full_name'))),
+            ]);
+        }
+
+        if ($this->has('companion_name')) {
+            $companionName = trim((string) $this->input('companion_name'));
+            $this->merge([
+                'companion_name' => $companionName !== '' ? preg_replace('/\s+/', ' ', $companionName) : null,
+            ]);
+        }
     }
 
     public function rules(): array
@@ -28,7 +46,22 @@ class PreregistrationRequest extends FormRequest
             'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'No sé',
         ];
 
-        $isMinor = in_array($this->input('document_type'), [
+        $birthDateInput = $this->input('birth_date');
+        $approximateAge = $this->input('approximate_age');
+        $calculatedAge = null;
+
+        if (! empty($birthDateInput)) {
+            try {
+                $nowBogota = Carbon::now('America/Bogota');
+                $calculatedAge = Carbon::parse($birthDateInput, 'America/Bogota')->diffInYears($nowBogota);
+            } catch (\Throwable) {
+                $calculatedAge = null;
+            }
+        } elseif ($approximateAge !== null && $approximateAge !== '') {
+            $calculatedAge = (int) $approximateAge;
+        }
+
+        $isMinor = ($calculatedAge !== null && $calculatedAge < 18) || in_array($this->input('document_type'), [
             'Tarjeta de identidad',
             'Registro civil',
             'Menor sin identificación',
@@ -42,7 +75,7 @@ class PreregistrationRequest extends FormRequest
 
         return [
             // Paciente
-            'full_name' => ['required', 'string', 'min:2', 'max:150'],
+            'full_name' => ['required', 'string', new PersonName(2, 150)],
             'document_type' => ['nullable', 'string', Rule::in($allowedDocTypes)],
             'document_number' => [
                 Rule::requiredIf(function () {
@@ -56,7 +89,8 @@ class PreregistrationRequest extends FormRequest
                 'max:20',
                 'regex:/^[A-Za-z0-9\-\.]+$/',
             ],
-            'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
+            'birth_date' => ['nullable', 'date'],
+            'approximate_age' => ['nullable', 'integer', 'min:0', 'max:120'],
             'gender' => ['nullable', 'string', Rule::in(['masculino', 'femenino', 'otro'])],
             'patient_phone' => ['nullable', 'string', 'min:7', 'max:15', 'regex:/^[0-9\+\-\s]+$/'],
 
@@ -79,8 +113,7 @@ class PreregistrationRequest extends FormRequest
             'companion_name' => [
                 $companionRequired ? 'required' : 'nullable',
                 'string',
-                'min:2',
-                'max:150',
+                new PersonName(2, 150),
             ],
             'companion_phone' => [
                 $companionRequired ? 'required' : 'nullable',
@@ -116,15 +149,70 @@ class PreregistrationRequest extends FormRequest
                 $validator->errors()->add('patient_phone', 'Es obligatorio registrar al menos un número de teléfono de contacto (del paciente o del acompañante).');
             }
 
-            // Si es menor de edad, requerir explícitamente acompañante o representante
-            $isMinor = in_array($this->input('document_type'), [
+            $docType = $this->input('document_type');
+            $birthDateInput = $this->input('birth_date');
+            $approximateAge = $this->input('approximate_age');
+            $age = null;
+
+            if (! empty($birthDateInput)) {
+                try {
+                    $birthDate = Carbon::parse($birthDateInput, 'America/Bogota');
+                    $nowBogota = Carbon::now('America/Bogota');
+
+                    if ($birthDate->greaterThan($nowBogota)) {
+                        $validator->errors()->add('birth_date', 'La fecha de nacimiento no puede ser una fecha futura.');
+
+                        return;
+                    }
+
+                    if ($birthDate->diffInYears($nowBogota) > 120) {
+                        $validator->errors()->add('birth_date', 'La fecha de nacimiento no puede ser anterior a 120 años.');
+
+                        return;
+                    }
+
+                    $age = (int) $birthDate->diffInYears($nowBogota);
+                } catch (\Throwable) {
+                    $validator->errors()->add('birth_date', 'El formato de fecha de nacimiento es inválido.');
+
+                    return;
+                }
+            } elseif ($approximateAge !== null && $approximateAge !== '') {
+                $age = (int) $approximateAge;
+            }
+
+            // Validar coherencia documental según normativa colombiana (Registraduría Nacional y Migración Colombia)
+            if ($age !== null && ! empty($docType)) {
+                if ($docType === 'Cédula de ciudadanía' && $age < 18) {
+                    $validator->errors()->add('document_type', 'La Cédula de ciudadanía sólo es válida para personas mayores de 18 años (edad calculada: '.$age.' años).');
+                }
+
+                if ($docType === 'Tarjeta de identidad' && ($age < 7 || $age >= 18)) {
+                    $validator->errors()->add('document_type', 'La Tarjeta de identidad sólo aplica para menores entre 7 y 17 años cumplidos (edad calculada: '.$age.' años).');
+                }
+
+                if ($docType === 'Registro civil' && $age >= 18) {
+                    $validator->errors()->add('document_type', 'El Registro civil aplica para menores de edad; los mayores de 18 años deben identificarse con Cédula de ciudadanía o extranjería.');
+                }
+
+                if ($docType === 'Menor sin identificación' && $age >= 18) {
+                    $validator->errors()->add('document_type', 'La categoría de menor sin identificación sólo aplica para personas menores de 18 años.');
+                }
+
+                if ($docType === 'Cédula de extranjería' && $age < 7) {
+                    $validator->errors()->add('document_type', 'La Cédula de extranjería sólo se expide a extranjeros a partir de los 7 años de edad.');
+                }
+            }
+
+            // Exigencia de acompañante por edad calculada (< 18 años) o por tipo de documento de menor
+            $isMinor = ($age !== null && $age < 18) || in_array($docType, [
                 'Tarjeta de identidad',
                 'Registro civil',
                 'Menor sin identificación',
             ], true);
 
             if ($isMinor && empty($this->input('companion_name'))) {
-                $validator->errors()->add('companion_name', 'Para pacientes menores de edad es obligatorio registrar los datos del acompañante o representante legal.');
+                $validator->errors()->add('companion_name', 'Para pacientes menores de 18 años es obligatorio registrar los datos del acompañante o representante legal.');
             }
         });
     }

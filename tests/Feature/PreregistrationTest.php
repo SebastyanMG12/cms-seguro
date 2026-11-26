@@ -427,4 +427,229 @@ class PreregistrationTest extends TestCase
         $this->expectException(RuntimeException::class);
         $consent->delete();
     }
+
+    public function test_preregistration_rejects_numeric_name_and_accepts_valid_unicode_names(): void
+    {
+        $basePayload = [
+            'document_type' => 'Cédula de ciudadanía',
+            'document_number' => '1020304050',
+            'birth_date' => '1995-04-12',
+            'patient_phone' => '3123456789',
+            'emergency_reason' => 'Fiebre persistente y malestar general desde ayer.',
+            'medication_allergies' => 'ninguna',
+            'consent_data_treatment' => '1',
+            'hospital_contact_time' => '',
+        ];
+
+        // 1. Nombre de paciente únicamente numérico debe fallar
+        $res1 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'full_name' => '12345678',
+        ]));
+        $res1->assertSessionHasErrors('full_name');
+
+        // 2. Nombre de acompañante numérico debe fallar
+        $res2 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'full_name' => 'Juana Valentina Castro',
+            'companion_name' => '987654321',
+            'companion_phone' => '3109876543',
+            'companion_relationship' => 'Hermana',
+        ]));
+        $res2->assertSessionHasErrors('companion_name');
+
+        // 3. Nombre válido con Unicode y apóstrofe es aceptado
+        $res3 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'full_name' => "María O'Brien de la Peña",
+        ]));
+        $res3->assertSessionHasNoErrors();
+    }
+
+    public function test_preregistration_rejects_document_age_incoherence(): void
+    {
+        $basePayload = [
+            'full_name' => 'Pedro Antonio González',
+            'patient_phone' => '3123456789',
+            'emergency_reason' => 'Dolor de cabeza agudo e intenso.',
+            'medication_allergies' => 'ninguna',
+            'consent_data_treatment' => '1',
+            'hospital_contact_time' => '',
+        ];
+
+        // 1. Menor de 5 años con Cédula de Ciudadanía -> Rechazado
+        $res1 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(5)->format('Y-m-d'),
+            'document_type' => 'Cédula de ciudadanía',
+            'document_number' => '1020304050',
+            'companion_name' => 'Padre de Familia',
+            'companion_phone' => '3112223344',
+            'companion_relationship' => 'Padre',
+        ]));
+        $res1->assertSessionHasErrors('document_type');
+
+        // 2. Adulto de 25 años con Tarjeta de Identidad -> Rechazado
+        $res2 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(25)->format('Y-m-d'),
+            'document_type' => 'Tarjeta de identidad',
+            'document_number' => '1020304050',
+        ]));
+        $res2->assertSessionHasErrors('document_type');
+
+        // 3. Menor de 5 años con Tarjeta de Identidad (TI requiere >= 7 años) -> Rechazado
+        $res3 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(5)->format('Y-m-d'),
+            'document_type' => 'Tarjeta de identidad',
+            'document_number' => '1020304050',
+            'companion_name' => 'Madre de Familia',
+            'companion_phone' => '3112223344',
+            'companion_relationship' => 'Madre',
+        ]));
+        $res3->assertSessionHasErrors('document_type');
+
+        // 4. Adulto de 30 años con 'Menor sin identificación' -> Rechazado
+        $res4 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(30)->format('Y-m-d'),
+            'document_type' => 'Menor sin identificación',
+        ]));
+        $res4->assertSessionHasErrors('document_type');
+
+        // 5. Menor de 3 años con Cédula de Extranjería (CE en Colombia aplica a partir de los 7 años) -> Rechazado
+        $res5 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(3)->format('Y-m-d'),
+            'document_type' => 'Cédula de extranjería',
+            'document_number' => '998877',
+            'companion_name' => 'Tutor Legal',
+            'companion_phone' => '3112223344',
+            'companion_relationship' => 'Tutor',
+        ]));
+        $res5->assertSessionHasErrors('document_type');
+    }
+
+    public function test_preregistration_boundary_ages_for_documents(): void
+    {
+        $basePayload = [
+            'full_name' => 'Laura Sofía Méndez',
+            'patient_phone' => '3123456789',
+            'emergency_reason' => 'Fiebre alta y dolor de garganta.',
+            'medication_allergies' => 'ninguna',
+            'consent_data_treatment' => '1',
+            'companion_name' => 'Madre de Laura',
+            'companion_phone' => '3109998877',
+            'companion_relationship' => 'Madre',
+            'hospital_contact_time' => '',
+        ];
+
+        // Límite 7 años: Menor con exactamente 7 años puede portar Tarjeta de Identidad
+        $resTI7 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(7)->format('Y-m-d'),
+            'document_type' => 'Tarjeta de identidad',
+            'document_number' => '1029384756',
+        ]));
+        $resTI7->assertSessionHasNoErrors();
+
+        // Límite 17 años: Menor con 17 años puede portar Tarjeta de Identidad
+        $resTI17 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(17)->format('Y-m-d'),
+            'document_type' => 'Tarjeta de identidad',
+            'document_number' => '1029384757',
+        ]));
+        $resTI17->assertSessionHasNoErrors();
+
+        // Límite 18 años: Al cumplir 18 años, ya NO puede usar Tarjeta de Identidad
+        $resTI18 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(18)->format('Y-m-d'),
+            'document_type' => 'Tarjeta de identidad',
+            'document_number' => '1029384758',
+        ]));
+        $resTI18->assertSessionHasErrors('document_type');
+
+        // Límite 18 años: Al cumplir 18 años, Cédula de Ciudadanía es válida
+        $resCC18 = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(18)->format('Y-m-d'),
+            'document_type' => 'Cédula de ciudadanía',
+            'document_number' => '1029384759',
+        ]));
+        $resCC18->assertSessionHasNoErrors();
+    }
+
+    public function test_preregistration_future_birth_date_and_over_120_years_rejected(): void
+    {
+        $basePayload = [
+            'full_name' => 'Esteban Morales',
+            'document_type' => 'Cédula de ciudadanía',
+            'document_number' => '1020304050',
+            'patient_phone' => '3123456789',
+            'emergency_reason' => 'Dolor abdominal.',
+            'medication_allergies' => 'ninguna',
+            'consent_data_treatment' => '1',
+            'hospital_contact_time' => '',
+        ];
+
+        // Fecha de nacimiento en el futuro -> Rechazada
+        $resFuture = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->addDays(2)->format('Y-m-d'),
+        ]));
+        $resFuture->assertSessionHasErrors('birth_date');
+
+        // Fecha de nacimiento superior a 120 años -> Rechazada
+        $resPast = $this->post(route('preregistro.store'), array_merge($basePayload, [
+            'birth_date' => now()->subYears(125)->format('Y-m-d'),
+        ]));
+        $resPast->assertSessionHasErrors('birth_date');
+    }
+
+    public function test_preregistration_unverified_age_policy(): void
+    {
+        // Sin fecha de nacimiento ni edad aproximada, pero con documento:
+        // No se bloquea la atención de urgencia; se registra como edad no verificada
+        $payload = [
+            'full_name' => 'Paciente Sin Fecha Registrada',
+            'document_type' => 'Pasaporte',
+            'document_number' => 'COL998877',
+            'patient_phone' => '3145556677',
+            'emergency_reason' => 'Herida cortante en extremidad superior derecha.',
+            'medication_allergies' => 'ninguna',
+            'consent_data_treatment' => '1',
+            'hospital_contact_time' => '',
+        ];
+
+        $res = $this->post(route('preregistro.store'), $payload);
+        $res->assertSessionHasNoErrors();
+
+        $episode = EmergencyEpisode::latest('created_at')->first();
+        $this->assertNotNull($episode);
+        $this->assertStringContainsString('Edad no verificada', (string) $episode->clinicalData?->notes);
+    }
+
+    public function test_preregistration_minor_requires_companion_based_on_calculated_age(): void
+    {
+        // Paciente con pasaporte (tipo sin restricción de edad) pero cuya edad calculada es 12 años (< 18)
+        $payloadWithoutCompanion = [
+            'full_name' => 'Nicolás Rentería',
+            'document_type' => 'Pasaporte',
+            'document_number' => 'PAS123456',
+            'birth_date' => now()->subYears(12)->format('Y-m-d'),
+            'patient_phone' => '3112223344',
+            'emergency_reason' => 'Dolor abdominal severo.',
+            'medication_allergies' => 'ninguna',
+            'consent_data_treatment' => '1',
+            'hospital_contact_time' => '',
+        ];
+
+        // Debe fallar porque no se registró acompañante para el menor de 12 años
+        $res1 = $this->post(route('preregistro.store'), $payloadWithoutCompanion);
+        $res1->assertSessionHasErrors('companion_name');
+
+        // Con acompañante, se procesa exitosamente y el consentimiento se asigna al representante
+        $payloadWithCompanion = array_merge($payloadWithoutCompanion, [
+            'companion_name' => 'Rosa Elena Rentería',
+            'companion_phone' => '3119998888',
+            'companion_relationship' => 'Tía y Tutora',
+        ]);
+
+        $res2 = $this->post(route('preregistro.store'), $payloadWithCompanion);
+        $res2->assertSessionHasNoErrors();
+
+        $episode = EmergencyEpisode::latest('created_at')->first();
+        $consent = Consent::where('episode_id', $episode->id)->where('type', 'tratamiento_datos')->first();
+        $this->assertEquals('representante', $consent->granted_by);
+    }
 }

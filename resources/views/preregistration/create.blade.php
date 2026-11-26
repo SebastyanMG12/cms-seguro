@@ -142,7 +142,7 @@
                             @enderror
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="birth_date" class="form-label fw-semibold">Fecha de Nacimiento</label>
                             <input type="date" class="form-control @error('birth_date') is-invalid @enderror" id="birth_date" name="birth_date" value="{{ old('birth_date') }}" max="{{ date('Y-m-d') }}">
                             @error('birth_date')
@@ -150,7 +150,15 @@
                             @enderror
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label for="approximate_age" class="form-label fw-semibold">Edad Aprox. (Años)</label>
+                            <input type="number" class="form-control @error('approximate_age') is-invalid @enderror" id="approximate_age" name="approximate_age" value="{{ old('approximate_age') }}" min="0" max="120" placeholder="Si desconoce fecha">
+                            @error('approximate_age')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-3">
                             <label for="gender" class="form-label fw-semibold">Sexo / Género</label>
                             <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender">
                                 <option value="">-- No especificado --</option>
@@ -163,7 +171,7 @@
                             @enderror
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="patient_phone" class="form-label fw-semibold">Teléfono del Paciente</label>
                             <input type="tel" class="form-control @error('patient_phone') is-invalid @enderror" id="patient_phone" name="patient_phone" value="{{ old('patient_phone') }}" placeholder="Ej: 3101234567">
                             <small class="form-text text-muted">Requerido al menos un teléfono (paciente o acompañante).</small>

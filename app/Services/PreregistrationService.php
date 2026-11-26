@@ -7,6 +7,7 @@ use App\Models\Consent;
 use App\Models\EmergencyEpisode;
 use App\Models\EpisodeClinicalData;
 use App\Models\Patient;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -20,11 +21,27 @@ class PreregistrationService
         return DB::transaction(function () use ($data, $clientIp, $userAgent) {
             $docType = $data['document_type'] ?? null;
             $docNumber = $data['document_number'] ?? null;
-            $isMinor = in_array($docType, [
+            $birthDate = $data['birth_date'] ?? null;
+            $approxAge = $data['approximate_age'] ?? null;
+            $calculatedAge = null;
+
+            if (! empty($birthDate)) {
+                try {
+                    $calculatedAge = Carbon::parse($birthDate, 'America/Bogota')->diffInYears(Carbon::now('America/Bogota'));
+                } catch (\Throwable) {
+                    $calculatedAge = null;
+                }
+            } elseif ($approxAge !== null && $approxAge !== '') {
+                $calculatedAge = (int) $approxAge;
+            }
+
+            $isMinor = ($calculatedAge !== null && $calculatedAge < 18) || in_array($docType, [
                 'Tarjeta de identidad',
                 'Registro civil',
                 'Menor sin identificación',
             ], true);
+
+            $isUnverifiedAge = empty($birthDate) && ($approxAge === null || $approxAge === '');
 
             // Cálculo del índice ciego para búsqueda sin revelar documento
             $documentIndex = Patient::computeDocumentIndex($docType, $docNumber);
@@ -71,12 +88,17 @@ class PreregistrationService
                 $bloodType = 'desconocido';
             }
 
+            $additionalNotes = trim((string) ($data['additional_notes'] ?? ''));
+            if ($isUnverifiedAge) {
+                $additionalNotes = trim('[Edad no verificada - Requiere confirmación presencial al ingreso] '.$additionalNotes);
+            }
+
             EpisodeClinicalData::create([
                 'episode_id' => $episode->id,
                 'allergies_type' => $data['medication_allergies'],
                 'allergies_detail' => ($data['medication_allergies'] === 'si') ? ($data['allergies_detail'] ?? null) : null,
                 'blood_type' => $bloodType,
-                'notes' => $data['additional_notes'] ?? null,
+                'notes' => $additionalNotes !== '' ? $additionalNotes : null,
                 'warning_signs' => $data['warning_signs'] ?? null,
             ]);
 
