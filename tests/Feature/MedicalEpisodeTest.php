@@ -314,11 +314,30 @@ class MedicalEpisodeTest extends TestCase
 
     public function test_exceptional_access_read_audit(): void
     {
-        // Acceso excepcional con motivo (médico no asignado)
-        $response = $this->actingAs($this->doctor)->get(route('episodes.show', [
-            'episode' => $this->episode,
-            'exceptional_reason' => 'Consulta urgente por relevo no programado',
-        ]));
+        // Episodio asignado a otro médico (Caso b: acceso excepcional obligatorio)
+        $otherDoctor = User::factory()->create(['status' => 'active', 'two_factor_confirmed_at' => now()]);
+        $otherDoctor->assignRole('medico');
+        $this->episode->update([
+            'status' => 'ingresado',
+            'responsible_user_id' => $otherDoctor->id,
+        ]);
+
+        // Solicitud POST de acceso excepcional
+        $postResponse = $this->actingAs($this->doctor)->post(route('episodes.break_glass.store', $this->episode), [
+            'category' => 'relevo_turno',
+            'exceptional_reason' => 'Relevo imprevisto de turno asistencial por orden médica.',
+        ]);
+        $postResponse->assertRedirect(route('episodes.show', $this->episode));
+
+        // Debe registrar la alerta de break-glass en auditoría
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'episodio.break_glass',
+            'user_id' => $this->doctor->id,
+            'model_id' => $this->episode->id,
+        ]);
+
+        // Al acceder a la vista con la sesión activa, se audita lectura excepcional
+        $response = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
         $response->assertStatus(200);
 
         $this->assertDatabaseHas('audit_logs', [
@@ -330,7 +349,14 @@ class MedicalEpisodeTest extends TestCase
 
     public function test_unassigned_doctor_without_reason_receives_break_glass_challenge(): void
     {
-        // El médico NO está asignado y no envía motivo de justificación
+        // Episodio asignado a otro médico (Caso b: requiere justificación)
+        $otherDoctor = User::factory()->create(['status' => 'active', 'two_factor_confirmed_at' => now()]);
+        $otherDoctor->assignRole('medico');
+        $this->episode->update([
+            'status' => 'ingresado',
+            'responsible_user_id' => $otherDoctor->id,
+        ]);
+
         $response = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
         $response->assertStatus(200);
 
@@ -339,6 +365,109 @@ class MedicalEpisodeTest extends TestCase
         $response->assertSee('Acceso Excepcional Requerido');
         $response->assertSee('ADVERTENCIA MÉDICO-LEGAL');
         $response->assertDontSee('Evolución y Entradas Clínicas (Inmutables)');
+    }
+
+    public function test_on_duty_doctor_can_view_unassigned_waiting_episode_without_break_glass(): void
+    {
+        // Caso (a): Paciente sin asignar en espera, médico con turno activo accede para triage sin fricción
+        $this->episode->update([
+            'status' => 'en_espera',
+            'responsible_user_id' => null,
+        ]);
+
+        $response = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
+        $response->assertStatus(200);
+        $response->assertSee('Evolución y Entradas Clínicas (Inmutables)');
+
+        // Registro de auditoría de lectura ordinaria
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'historia.lectura',
+            'user_id' => $this->doctor->id,
+            'model_id' => $this->episode->id,
+        ]);
+    }
+
+    public function test_off_duty_doctor_without_shift_cannot_view_or_break_glass(): void
+    {
+        // Finalizamos el turno del médico
+        $this->doctor->shifts()->update(['status' => Shift::STATUS_FINALIZADO]);
+        $this->assertFalse($this->doctor->hasActiveShift());
+
+        // 1. Al intentar ver el episodio, recibe el reto de break-glass indicando falta de turno
+        $response = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
+        $response->assertStatus(200);
+        $response->assertSee('No cuenta con un turno asistencial activo registrado');
+
+        // 2. Si intenta forzar el POST de break-glass sin turno, es rechazado con error
+        $postRes = $this->actingAs($this->doctor)->post(route('episodes.break_glass.store', $this->episode), [
+            'category' => 'emergencia_vital',
+            'exceptional_reason' => 'Intento de acceso por profesional fuera de turno laboral.',
+        ]);
+        $postRes->assertSessionHasErrors('shift');
+    }
+
+    public function test_break_glass_rate_limiting_and_validation(): void
+    {
+        // Episodio asignado a otro médico
+        $otherDoctor = User::factory()->create(['status' => 'active', 'two_factor_confirmed_at' => now()]);
+        $otherDoctor->assignRole('medico');
+        $this->episode->update([
+            'status' => 'ingresado',
+            'responsible_user_id' => $otherDoctor->id,
+        ]);
+
+        // 1. Rechazar categoría inválida
+        $resCat = $this->actingAs($this->doctor)->post(route('episodes.break_glass.store', $this->episode), [
+            'category' => 'categoria_inexistente',
+            'exceptional_reason' => 'Motivo clínico suficientemente largo.',
+        ]);
+        $resCat->assertSessionHasErrors('category');
+
+        // 2. Rechazar motivo demasiado corto (< 15 chars)
+        $resShort = $this->actingAs($this->doctor)->post(route('episodes.break_glass.store', $this->episode), [
+            'category' => 'emergencia_vital',
+            'exceptional_reason' => 'muy corto',
+        ]);
+        $resShort->assertSessionHasErrors('exceptional_reason');
+
+        // 3. Rechazar caracteres repetitivos o triviales
+        $resTrivial = $this->actingAs($this->doctor)->post(route('episodes.break_glass.store', $this->episode), [
+            'category' => 'emergencia_vital',
+            'exceptional_reason' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        ]);
+        $resTrivial->assertSessionHasErrors('exceptional_reason');
+    }
+
+    public function test_break_glass_session_expires_after_30_minutes(): void
+    {
+        $otherDoctor = User::factory()->create(['status' => 'active', 'two_factor_confirmed_at' => now()]);
+        $otherDoctor->assignRole('medico');
+        $this->episode->update([
+            'status' => 'ingresado',
+            'responsible_user_id' => $otherDoctor->id,
+        ]);
+
+        // Conceder acceso
+        $this->actingAs($this->doctor)->post(route('episodes.break_glass.store', $this->episode), [
+            'category' => 'interconsulta_urgente',
+            'exceptional_reason' => 'Interconsulta médica de urología requerida urgentemente.',
+        ])->assertRedirect(route('episodes.show', $this->episode));
+
+        // Inmediatamente puede ver el episodio
+        $resActive = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
+        $resActive->assertStatus(200);
+        $resActive->assertSee('Evolución y Entradas Clínicas (Inmutables)');
+
+        // Simulamos el paso de 31 minutos
+        \Carbon\Carbon::setTestNow(now()->addMinutes(31));
+
+        // Ahora la sesión ha expirado y vuelve a exigir el reto de break-glass
+        $resExpired = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
+        $resExpired->assertStatus(200);
+        $resExpired->assertSee('Control de Custodia de Historia Clínica');
+        $resExpired->assertDontSee('Evolución y Entradas Clínicas (Inmutables)');
+
+        \Carbon\Carbon::setTestNow(); // Restaurar reloj
     }
 
     public function test_unassigned_doctor_cannot_add_clinical_entry_or_discharge(): void

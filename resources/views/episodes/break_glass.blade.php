@@ -25,6 +25,27 @@
                     </div>
                 </div>
 
+                {{-- Errores de validación o restricción de turno --}}
+                @if ($errors->any())
+                    <div class="alert alert-danger mb-4" role="alert">
+                        <ul class="mb-0 ps-3">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @if (empty($hasActiveShift))
+                    <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+                        <i class="bi bi-slash-circle-fill fs-4 me-3 flex-shrink-0" aria-hidden="true"></i>
+                        <div>
+                            <strong>Acceso denegado por política de seguridad:</strong>
+                            No cuenta con un turno asistencial activo registrado. La apertura de historia clínica bajo causal excepcional requiere encontrarse en servicio activo en el hospital.
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Datos mínimos de verificación del paciente --}}
                 <div class="p-3 bg-light rounded border mb-4">
                     <div class="row g-2 small">
@@ -52,43 +73,47 @@
                     </div>
                 </div>
 
-                <form action="{{ route('episodes.show', $episode) }}" method="GET" id="breakGlassForm">
+                @if (! empty($hasActiveShift))
+                <form action="{{ route('episodes.break_glass.store', $episode) }}" method="POST" id="breakGlassForm">
+                    @csrf
+
+                    <div class="mb-3">
+                        <label for="category" class="form-label fw-bold text-dark">
+                            Causal de Acceso Excepcional <span class="text-danger">*</span>
+                        </label>
+                        <select name="category" id="category" class="form-select @error('category') is-invalid @enderror" required>
+                            <option value="">-- Seleccione la causal clínico-asistencial --</option>
+                            <option value="emergencia_vital" {{ old('category') === 'emergencia_vital' ? 'selected' : '' }}>Emergencia Vital / Reanimación / Código Azul</option>
+                            <option value="interconsulta_urgente" {{ old('category') === 'interconsulta_urgente' ? 'selected' : '' }}>Interconsulta Médica Urgente</option>
+                            <option value="relevo_turno" {{ old('category') === 'relevo_turno' ? 'selected' : '' }}>Relevo o Reemplazo Imprevisto de Turno</option>
+                            <option value="ausencia_tratante" {{ old('category') === 'ausencia_tratante' ? 'selected' : '' }}>Ausencia Temporal del Médico Tratante</option>
+                            <option value="otro" {{ old('category') === 'otro' ? 'selected' : '' }}>Otro Motivo Asistencial Justificado</option>
+                        </select>
+                        @error('category')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                     <div class="mb-3">
                         <label for="exceptional_reason" class="form-label fw-bold text-dark">
-                            Motivo justificado del acceso excepcional <span class="text-danger">*</span>
+                            Justificación Clínica Detallada <span class="text-danger">*</span>
                         </label>
                         <textarea
                             name="exceptional_reason"
                             id="exceptional_reason"
                             rows="3"
-                            class="form-control"
-                            placeholder="Describa el motivo clínico asistencial o de urgencia por el cual requiere consultar esta historia clínica (mínimo 10 caracteres)..."
-                            minlength="10"
+                            class="form-control @error('exceptional_reason') is-invalid @enderror"
+                            placeholder="Describa de forma precisa la necesidad asistencial o médica por la cual requiere consultar este expediente (mínimo 15 caracteres)..."
+                            minlength="15"
                             maxlength="500"
                             required
                         >{{ old('exceptional_reason') }}</textarea>
                         <div class="form-text small">
-                            Mínimo 10 caracteres. Sea preciso: este texto formará parte del expediente de auditoría médica.
+                            Mínimo 15 caracteres. Acceso temporal por 30 minutos; se genera alerta forense inmediata para coordinación médica y auditoría.
                         </div>
-                    </div>
-
-                    {{-- Opciones rápidas de justificación de urgencia --}}
-                    <div class="mb-4">
-                        <span class="small text-muted d-block mb-1">Causales habituales de urgencias (clic para seleccionar):</span>
-                        <div class="d-flex flex-wrap gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="setReason('Relevo o reemplazo imprevisto de turno de urgencias')">
-                                Relevo de turno
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="setReason('Interconsulta médica o segunda opinión de urgencia')">
-                                Interconsulta médica
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="setReason('Código azul / Paciente descompensado en sala de urgencias')">
-                                Código azul / Descompensación
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="setReason('Atención médica requerida por ausencia temporal del médico tratante')">
-                                Ausencia temporal de tratante
-                            </button>
-                        </div>
+                        @error('exceptional_reason')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center gap-2 pt-2 border-top">
@@ -100,6 +125,13 @@
                         </button>
                     </div>
                 </form>
+                @else
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                    <a href="{{ route('episodes.index') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Regresar al listado de urgencias
+                    </a>
+                </div>
+                @endif
             </div>
             <div class="card-footer bg-light py-2 px-4 text-muted small text-center">
                 Hospital de Ubaté - Sistema Seguro de Urgencias. Todo intento de acceso es trazable y peritable.
@@ -107,14 +139,4 @@
         </div>
     </div>
 </div>
-
-<script>
-function setReason(text) {
-    var textarea = document.getElementById('exceptional_reason');
-    if (textarea) {
-        textarea.value = text;
-        textarea.focus();
-    }
-}
-</script>
 @endsection

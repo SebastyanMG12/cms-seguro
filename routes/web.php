@@ -193,6 +193,9 @@ Route::middleware(['auth', 'active', 'two-factor'])->group(function () {
     Route::get('/episodios/{episode}', [MedicalEpisodeController::class, 'show'])
         ->whereUuid('episode')
         ->name('episodes.show');
+    Route::post('/episodios/{episode}/acceso-excepcional', [MedicalEpisodeController::class, 'requestBreakGlass'])
+        ->whereUuid('episode')
+        ->name('episodes.break_glass.store');
     Route::post('/episodios/{episode}/llegada', [MedicalEpisodeController::class, 'registerArrival'])
         ->whereUuid('episode')
         ->name('episodes.arrival');

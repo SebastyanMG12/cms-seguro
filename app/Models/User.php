@@ -104,4 +104,9 @@ class User extends Authenticatable
             ->whereNull('ended_at')
             ->whereHas('episode', fn ($q) => $q->whereNotIn('status', ['egresado', 'expirado']));
     }
+
+    public function hasActiveShift(): bool
+    {
+        return $this->shifts()->where('status', Shift::STATUS_ACTIVO)->exists();
+    }
 }

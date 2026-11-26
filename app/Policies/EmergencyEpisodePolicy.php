@@ -142,7 +142,13 @@ class EmergencyEpisodePolicy
             return true;
         }
 
-        if (session()->has("exceptional_access_{$episode->id}")) {
+        $sessionData = session("exceptional_access_{$episode->id}");
+        if (is_array($sessionData) && isset($sessionData['expires_at'])) {
+            if (now()->timestamp <= $sessionData['expires_at']) {
+                return true;
+            }
+            session()->forget("exceptional_access_{$episode->id}");
+        } elseif (is_string($sessionData) && ! empty($sessionData)) {
             return true;
         }
 

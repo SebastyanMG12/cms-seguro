@@ -8,11 +8,14 @@ use App\Models\EmergencyEpisode;
 use App\Models\EpisodeAssignment;
 use App\Models\User;
 use App\Rules\PersonName;
+use App\Services\Audit;
 use App\Services\ClinicalService;
 use App\Services\EpisodeStateMachine;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class MedicalEpisodeController extends Controller
@@ -93,24 +96,45 @@ class MedicalEpisodeController extends Controller
         $isAssigned = $episode->isAssignedUser($user);
         $isSupervisor = $user->hasAnyRole(['coordinador', 'administrador', 'auditor']);
 
-        $exceptionalReason = $request->query('exceptional_reason') ?? session("exceptional_access_{$episode->id}");
+        // Caso (a): Paciente sin asignar en espera/preregistrado y el profesional asistencial tiene turno activo
+        $isUnassignedWaiting = $episode->responsible_user_id === null
+            && in_array($episode->status, ['preregistrado', 'en_espera'], true);
+        $hasActiveShift = $user->hasActiveShift();
 
-        // Si el usuario no está asignado ni es supervisor institucional, debe justificar acceso excepcional (Break-Glass)
-        if (! $isAssigned && ! $isSupervisor) {
-            if (empty($exceptionalReason) || mb_strlen(trim($exceptionalReason)) < 10) {
-                return view('episodes.break_glass', [
-                    'episode' => $episode,
-                ]);
+        $canViewDirectly = $isAssigned || $isSupervisor || ($isUnassignedWaiting && $hasActiveShift);
+
+        $exceptionalReason = null;
+
+        // Caso (b): Paciente asignado a otro profesional o fuera de turno asistencial
+        if (! $canViewDirectly) {
+            $sessionData = session("exceptional_access_{$episode->id}");
+            $isSessionValid = false;
+
+            if (is_array($sessionData) && isset($sessionData['expires_at'], $sessionData['reason'])) {
+                if (now()->timestamp <= $sessionData['expires_at']) {
+                    $isSessionValid = true;
+                    $exceptionalReason = $sessionData['reason'];
+                } else {
+                    session()->forget("exceptional_access_{$episode->id}");
+                }
+            } elseif (is_string($sessionData) && ! empty($sessionData)) {
+                $isSessionValid = true;
+                $exceptionalReason = $sessionData;
             }
 
-            session()->put("exceptional_access_{$episode->id}", $exceptionalReason);
+            if (! $isSessionValid) {
+                return view('episodes.break_glass', [
+                    'episode' => $episode,
+                    'hasActiveShift' => $hasActiveShift,
+                ]);
+            }
         }
 
         // Registro obligatorio de auditoría de lectura
         $clinicalService->recordMedicalRecordRead(
             $episode,
             $user,
-            (! $isAssigned && ! $isSupervisor) ? $exceptionalReason : null
+            (! $isAssigned && ! $isSupervisor && $exceptionalReason !== null) ? $exceptionalReason : null
         );
 
         $episode->load([
@@ -275,5 +299,94 @@ class MedicalEpisodeController extends Controller
 
         return redirect()->route('episodes.show', $episode)
             ->with('success', 'Datos del acompañante actualizados.');
+    }
+
+    /**
+     * Procesa la solicitud controlada de acceso excepcional (Break-Glass) a una historia clínica.
+     * Exige rol clínico, turno asistencial activo, causal tipificada, justificación no trivial,
+     * límite de tasa (5/hora) y genera alerta forense inmediata, otorgando sesión temporal por 30 minutos.
+     */
+    public function requestBreakGlass(Request $request, EmergencyEpisode $episode): RedirectResponse
+    {
+        Gate::authorize('view', $episode);
+
+        $user = $request->user();
+
+        // 1. Restringido a personal asistencial (médico o enfermero)
+        if (! $user->hasAnyRole(['medico', 'enfermero'])) {
+            abort(403, 'El acceso excepcional sólo está disponible para el personal asistencial de urgencias.');
+        }
+
+        // 2. Requiere turno asistencial activo
+        if (! $user->hasActiveShift()) {
+            return back()->withErrors([
+                'shift' => 'No puede solicitar acceso excepcional sin contar con un turno asistencial activo registrado.',
+            ]);
+        }
+
+        // 3. Límite de frecuencia: máximo 5 solicitudes por hora por usuario
+        $rateLimitKey = "break_glass:{$user->id}";
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+
+            return back()->withErrors([
+                'rate_limit' => "Ha alcanzado el límite de 5 solicitudes de acceso excepcional por hora. Intente nuevamente en {$seconds} segundos o contacte a la coordinación médica.",
+            ]);
+        }
+
+        // 4. Validación de motivo: categoría cerrada + justificación descriptiva
+        $validated = $request->validate([
+            'category' => ['required', 'string', Rule::in([
+                'emergencia_vital',
+                'interconsulta_urgente',
+                'relevo_turno',
+                'ausencia_tratante',
+                'otro',
+            ])],
+            'exceptional_reason' => ['required', 'string', 'min:15', 'max:500'],
+        ]);
+
+        $reason = trim($validated['exceptional_reason']);
+
+        // Rechazar justificaciones triviales o secuencias repetitivas
+        if (preg_match('/(.)\1{4,}/u', $reason) || preg_match('/^[0-9\s\.\-]+$/', $reason)) {
+            return back()->withErrors([
+                'exceptional_reason' => 'Debe ingresar una justificación clínica descriptiva válida. No se admiten caracteres repetitivos o triviales.',
+            ]);
+        }
+
+        RateLimiter::hit($rateLimitKey, 3600);
+
+        $categoryLabels = [
+            'emergencia_vital' => 'Emergencia Vital / Reanimación',
+            'interconsulta_urgente' => 'Interconsulta Médica Urgente',
+            'relevo_turno' => 'Relevo Imprevisto de Turno',
+            'ausencia_tratante' => 'Ausencia Temporal del Médico Tratante',
+            'otro' => 'Otro Motivo Asistencial',
+        ];
+
+        $categoryLabel = $categoryLabels[$validated['category']] ?? $validated['category'];
+        $formattedReason = "[{$categoryLabel}] {$reason}";
+
+        // Concesión de acceso temporal por 30 minutos (solo lectura)
+        session()->put("exceptional_access_{$episode->id}", [
+            'category' => $validated['category'],
+            'reason' => $formattedReason,
+            'expires_at' => now()->addMinutes(30)->timestamp,
+        ]);
+
+        // Alerta inmediata de auditoría para coordinación médica y auditor
+        Audit::log('episodio.break_glass', $episode, [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'category' => $validated['category'],
+            'reason' => $formattedReason,
+            'expires_at' => now()->addMinutes(30)->toIso8601String(),
+            'alert_level' => 'CRITICAL_CLINICAL_BREAK_GLASS',
+            'patient_id' => $episode->patient_id,
+        ]);
+
+        return redirect()->route('episodes.show', $episode)
+            ->with('success', 'Acceso excepcional concedido por 30 minutos bajo supervisión de auditoría.');
     }
 }
