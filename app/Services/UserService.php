@@ -12,6 +12,12 @@ use Illuminate\Validation\ValidationException;
 class UserService
 {
     /**
+     * Clave fija de 64 bits para el candado de asesoría transaccional en PostgreSQL.
+     * Serializa operaciones sobre administradores activos para evitar condiciones de carrera.
+     */
+    private const ADMIN_LOCK_KEY = 742910384;
+
+    /**
      * @param  array{name: string, email: string, roles: array<int, string>}  $data
      */
     public function update(User $user, array $data, User $actor): User
@@ -26,11 +32,11 @@ class UserService
             ]);
         }
 
-        if ($user->hasRole('administrador') && $user->isActive() && ! in_array('administrador', $data['roles'], true)) {
-            $this->ensureNotLastActiveAdmin($user, 'roles', 'No se puede quitar el rol al último administrador activo.');
-        }
-
         return DB::transaction(function () use ($user, $data): User {
+            if ($user->hasRole('administrador') && $user->isActive() && ! in_array('administrador', $data['roles'], true)) {
+                $this->ensureNotLastActiveAdmin('roles', 'No se puede quitar el rol al último administrador activo.');
+            }
+
             $user->update([
                 'name' => $data['name'],
                 'email' => $data['email'],
@@ -52,10 +58,6 @@ class UserService
             ]);
         }
 
-        if ($user->hasRole('administrador') && $user->isActive()) {
-            $this->ensureNotLastActiveAdmin($user, 'user', 'No se puede suspender al último administrador activo.');
-        }
-
         if ($user->staffProfile()->exists()) {
             $activePatients = app(ClinicalService::class)->countActivePatients($user);
             if ($activePatients > 0) {
@@ -66,6 +68,10 @@ class UserService
         }
 
         DB::transaction(function () use ($user, $reason): void {
+            if ($user->hasRole('administrador') && $user->isActive()) {
+                $this->ensureNotLastActiveAdmin('user', 'No se puede suspender al último administrador activo.');
+            }
+
             $user->forceFill(['status' => 'suspended'])->save();
 
             // Sincronizar estado asistencial
@@ -117,11 +123,11 @@ class UserService
             ]);
         }
 
-        if ($user->hasRole('administrador') && $user->isActive()) {
-            $this->ensureNotLastActiveAdmin($user, 'user', 'No se puede eliminar al último administrador activo.');
-        }
-
         DB::transaction(function () use ($user): void {
+            if ($user->hasRole('administrador') && $user->isActive()) {
+                $this->ensureNotLastActiveAdmin('user', 'No se puede eliminar al último administrador activo.');
+            }
+
             $user->delete();
 
             DB::table('sessions')->where('user_id', $user->id)->delete();
@@ -145,11 +151,14 @@ class UserService
         });
     }
 
-    private function ensureNotLastActiveAdmin(User $user, string $errorKey, string $errorMessage): void
+    private function ensureNotLastActiveAdmin(string $errorKey, string $errorMessage): void
     {
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('SELECT pg_advisory_xact_lock(?)', [self::ADMIN_LOCK_KEY]);
+        }
+
         $activeAdminsCount = User::role('administrador')
             ->where('status', 'active')
-            ->lockForUpdate()
             ->count();
 
         if ($activeAdminsCount <= 1) {

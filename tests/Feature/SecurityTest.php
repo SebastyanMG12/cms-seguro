@@ -584,6 +584,52 @@ class SecurityTest extends TestCase
         $this->assertNotNull(User::find($admin->id));
     }
 
+    public function test_admin_operations_permitted_with_two_admins_and_blocked_on_last(): void
+    {
+        $admin1 = $this->user('administrador');
+        $admin2 = $this->user('administrador');
+        $manager = $this->user('autor');
+        $manager->givePermissionTo('usuarios.gestionar');
+
+        // Con 2 administradores activos, suspender a admin1 es permitido
+        $this->actingAs($manager)
+            ->post("/admin/usuarios/{$admin1->id}/suspender", [
+                'reason' => 'Suspensión autorizada quedando un admin activo',
+            ])
+            ->assertRedirect();
+
+        $admin1->refresh();
+        $this->assertSame('suspended', $admin1->status);
+
+        // Ahora solo queda admin2 activo; intentar suspenderlo debe fallar
+        $this->actingAs($manager)
+            ->post("/admin/usuarios/{$admin2->id}/suspender", [
+                'reason' => 'Intento de suspender al único admin restante',
+            ])
+            ->assertSessionHasErrors('user');
+
+        $admin2->refresh();
+        $this->assertSame('active', $admin2->status);
+    }
+
+    public function test_advisory_lock_is_acquired_in_postgresql_during_admin_validation(): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('Candado asesor específico para driver PostgreSQL.');
+        }
+
+        $admin = $this->user('administrador');
+        $manager = $this->user('autor');
+        $manager->givePermissionTo('usuarios.gestionar');
+
+        // Verificamos que se ejecute la validación con el candado transaccional sin lanzar excepción SQLSTATE[0A000]
+        $this->actingAs($manager)
+            ->delete("/admin/usuarios/{$admin->id}")
+            ->assertSessionHasErrors('user');
+
+        $this->assertNotNull(User::find($admin->id));
+    }
+
     public function test_authenticated_user_can_change_password_and_close_other_sessions(): void
     {
         $user = $this->user('medico');
