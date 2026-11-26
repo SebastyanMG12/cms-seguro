@@ -104,4 +104,30 @@ class ContactFlowTest extends TestCase
         $response->assertRedirect(route('emails.index'));
         $response->assertSessionHas('success');
     }
+
+    public function test_contact_form_rejects_numeric_and_symbolic_names_and_accepts_valid_unicode(): void
+    {
+        Mail::fake();
+
+        // 1. Nombre únicamente numérico debe fallar la validación
+        $this->post('/contacto', [
+            'name' => '12345678',
+            'email' => 'test@ejemplo.com',
+            'message' => 'Mensaje válido de prueba para contacto.',
+        ])->assertSessionHasErrors('name');
+
+        // 2. Nombre con símbolos o script debe fallar
+        $this->post('/contacto', [
+            'name' => '<script>alert(1)</script>',
+            'email' => 'test@ejemplo.com',
+            'message' => 'Mensaje válido de prueba para contacto.',
+        ])->assertSessionHasErrors('name');
+
+        // 3. Nombre válido con tildes, eñe y apóstrofe debe ser aceptado
+        $this->post('/contacto', [
+            'name' => "María O'Brien Peña",
+            'email' => 'test@ejemplo.com',
+            'message' => 'Mensaje válido de prueba para contacto médico.',
+        ])->assertSessionHasNoErrors();
+    }
 }

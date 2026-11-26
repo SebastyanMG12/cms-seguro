@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\PersonName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,7 +17,10 @@ class UpdateUserRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['email' => strtolower(trim((string) $this->input('email')))]);
+        $this->merge([
+            'name' => preg_replace('/\s+/', ' ', trim((string) $this->input('name'))),
+            'email' => strtolower(trim((string) $this->input('email'))),
+        ]);
     }
 
     public function rules(): array
@@ -24,7 +28,7 @@ class UpdateUserRequest extends FormRequest
         $targetUser = $this->route('user');
 
         return [
-            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'name' => ['required', 'string', new PersonName(2, 100)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($targetUser?->id)],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['string', Rule::exists('roles', 'name')],

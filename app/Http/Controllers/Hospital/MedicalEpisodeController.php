@@ -7,6 +7,7 @@ use App\Models\Bed;
 use App\Models\EmergencyEpisode;
 use App\Models\EpisodeAssignment;
 use App\Models\User;
+use App\Rules\PersonName;
 use App\Services\ClinicalService;
 use App\Services\EpisodeStateMachine;
 use Illuminate\Http\RedirectResponse;
@@ -265,7 +266,7 @@ class MedicalEpisodeController extends Controller
         Gate::authorize('updateCompanion', $episode);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'min:2', 'max:150'],
+            'name' => ['required', 'string', new PersonName(2, 150)],
             'phone' => ['nullable', 'string', 'min:7', 'max:20'],
             'relationship' => ['nullable', 'string', 'max:50'],
         ]);

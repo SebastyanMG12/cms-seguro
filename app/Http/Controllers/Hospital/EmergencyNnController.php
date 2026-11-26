@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Hospital;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmergencyEpisode;
+use App\Rules\PersonName;
 use App\Services\IdentityReconciliationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -77,7 +78,7 @@ class EmergencyNnController extends Controller
             'existing_patient_id' => ['required_if:reconciliation_mode,existing', 'nullable', 'uuid', 'exists:patients,id'],
             'document_type' => ['required_if:reconciliation_mode,new', 'nullable', 'string', 'max:50'],
             'document_number' => ['required_if:reconciliation_mode,new', 'nullable', 'string', 'min:3', 'max:30'],
-            'full_name' => ['required_if:reconciliation_mode,new', 'nullable', 'string', 'min:3', 'max:150'],
+            'full_name' => ['required_if:reconciliation_mode,new', 'nullable', 'string', new PersonName(3, 150)],
             'birth_date' => ['nullable', 'date', 'before_or_equal:today'],
             'gender' => ['nullable', 'string', 'in:masculino,femenino,indeterminado'],
             'phone' => ['nullable', 'string', 'min:7', 'max:20'],

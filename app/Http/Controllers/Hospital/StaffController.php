@@ -7,6 +7,7 @@ use App\Models\EpisodeAssignment;
 use App\Models\Shift;
 use App\Models\StaffProfile;
 use App\Models\User;
+use App\Rules\PersonName;
 use App\Services\ClinicalService;
 use App\Services\StaffService;
 use Illuminate\Http\RedirectResponse;
@@ -98,7 +99,7 @@ class StaffController extends Controller
         Gate::authorize('personal.gestionar');
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'min:3', 'max:255'],
+            'name' => ['required', 'string', new PersonName(2, 255)],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
             'roles' => ['required', 'array', 'min:1'],
@@ -135,7 +136,7 @@ class StaffController extends Controller
         Gate::authorize('personal.gestionar');
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'min:3', 'max:255'],
+            'name' => ['required', 'string', new PersonName(2, 255)],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($profile->user_id)],
             'specialty' => ['required', 'string', 'min:2', 'max:100'],
             'status' => ['required', 'string', Rule::in([

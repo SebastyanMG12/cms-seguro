@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Rules\PersonName;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -24,7 +25,7 @@ class CrearAdmin extends Command
         $validator = Validator::make(
             ['name' => $name, 'email' => $email, 'password' => $password, 'password_confirmation' => $confirmation],
             [
-                'name' => ['required', 'string', 'min:2', 'max:100'],
+                'name' => ['required', 'string', new PersonName(2, 100)],
                 'email' => ['required', 'email', 'max:255', 'unique:users,email'],
                 'password' => ['required', 'confirmed', Password::min(12)->mixedCase()->numbers()->symbols()],
             ]

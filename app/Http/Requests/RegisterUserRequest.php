@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\PersonName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -15,6 +16,7 @@ class RegisterUserRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
+            'name' => preg_replace('/\s+/', ' ', trim((string) $this->input('name'))),
             'email' => strtolower(trim((string) $this->input('email'))),
         ]);
     }
@@ -22,7 +24,7 @@ class RegisterUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'name' => ['required', 'string', new PersonName(2, 100)],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => [
                 'required',
