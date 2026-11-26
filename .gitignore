@@ -6,6 +6,22 @@
 .env.testing
 ~$*
 /scratch
+# Documentos internos y evidencias de auditoria (no versionar)
+AGENTE_HOSPITAL.md
+DISEÑO_FRONTEND.md
+DISENO_FRONTEND.md
+ESTADO_PROYECTO.md
+INFORME_IMPLEMENTACION_Y_SEGURIDAD.md
+INFORME_PRUEBAS_ESTATICAS_Y_DINAMICAS_MEDIT.md
+INFORME_PRUEBAS_ESTATICAS_Y_DINAMICAS_MEDIT.docx
+VULNERABILIDAD DE PHP.docx
+VULNERABILIDADES DE PHP.docx
+EVIDENCIA_AUDIT_ANTES.txt
+evidencia_audit_antes.txt
+PROMPT_*.md
+PROMPT_AUDITORIA_QA.md
+informes_locales/
+composer.lock.bak
 .phpactor.json
 .phpunit.result.cache
 /.fleet
