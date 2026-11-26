@@ -28,9 +28,12 @@ class HospitalDocsCommand extends Command
     public function handle(): int
     {
         $filePath = base_path('INFORME_IMPLEMENTACION_Y_SEGURIDAD.md');
+        if (! file_exists($filePath)) {
+            $filePath = base_path('docs/seguridad.md');
+        }
 
         if (! file_exists($filePath)) {
-            $this->error('No se encontró el archivo de documentación INFORME_IMPLEMENTACION_Y_SEGURIDAD.md');
+            $this->error('No se encontró el archivo de documentación técnica en root ni en docs/seguridad.md');
 
             return Command::FAILURE;
         }

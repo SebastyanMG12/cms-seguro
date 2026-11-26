@@ -20,7 +20,14 @@ class PageController extends Controller
     public function documentation(): View
     {
         $filePath = base_path('INFORME_IMPLEMENTACION_Y_SEGURIDAD.md');
-        $rawMarkdown = file_exists($filePath) ? file_get_contents($filePath) : '# Documentación no disponible';
+        if (! file_exists($filePath)) {
+            $filePath = base_path('docs/seguridad.md');
+        }
+
+        $rawMarkdown = file_exists($filePath)
+            ? file_get_contents($filePath)
+            : "# Documentación Oficial del Sistema - Hospital de Ubaté\n\nConsulte los manuales técnicos disponibles en la carpeta `docs/`.";
+
         $htmlContent = Str::markdown($rawMarkdown);
 
         return view('pages.documentation', [
