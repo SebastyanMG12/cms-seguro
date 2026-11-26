@@ -98,7 +98,7 @@ class NewsAndPublicationsTest extends TestCase
             'title' => 'Comunicado Sobre Medidas Sanitarias',
             'slug' => 'comunicado-medidas-sanitarias',
             'status' => 'published',
-            'body' => $safeText . "\n" . $xssPayload,
+            'body' => $safeText."\n".$xssPayload,
         ]);
 
         $response = $this->get(route('news.show', $post->slug));

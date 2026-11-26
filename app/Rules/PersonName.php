@@ -4,6 +4,7 @@ namespace App\Rules;
 
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Translation\PotentiallyTranslatedString;
 
 class PersonName implements ValidationRule
 {
@@ -23,7 +24,7 @@ class PersonName implements ValidationRule
      * y al menos el número configurado de letras reales, rechazando secuencias numéricas,
      * símbolos no permitidos y cadenas exclusivamente de puntuación o espacios.
      *
-     * @param  \Closure(string, ?string=): \Illuminate\Translation\PotentiallyTranslatedString  $fail
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {

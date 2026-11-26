@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\ClinicalService;
 use App\Services\EpisodeStateMachine;
 use App\Services\UserService;
+use Carbon\Carbon;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -459,7 +460,7 @@ class MedicalEpisodeTest extends TestCase
         $resActive->assertSee('Evolución y Entradas Clínicas (Inmutables)');
 
         // Simulamos el paso de 31 minutos
-        \Carbon\Carbon::setTestNow(now()->addMinutes(31));
+        Carbon::setTestNow(now()->addMinutes(31));
 
         // Ahora la sesión ha expirado y vuelve a exigir el reto de break-glass
         $resExpired = $this->actingAs($this->doctor)->get(route('episodes.show', $this->episode));
@@ -467,7 +468,7 @@ class MedicalEpisodeTest extends TestCase
         $resExpired->assertSee('Control de Custodia de Historia Clínica');
         $resExpired->assertDontSee('Evolución y Entradas Clínicas (Inmutables)');
 
-        \Carbon\Carbon::setTestNow(); // Restaurar reloj
+        Carbon::setTestNow(); // Restaurar reloj
     }
 
     public function test_unassigned_doctor_cannot_add_clinical_entry_or_discharge(): void
