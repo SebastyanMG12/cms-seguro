@@ -466,4 +466,88 @@ class CompanionTrackingTest extends TestCase
         $resAssignedConsent->assertRedirect(route('episodes.show', $this->episode));
         $this->assertTrue($this->episode->fresh()->hasActiveCompanionConsent());
     }
+
+    public function test_evolution_notes_are_never_exposed_to_companion_while_companion_notes_and_diagnoses_are_shared(): void
+    {
+        $companionService = app(CompanionService::class);
+        $pin = $companionService->generatePin($this->episode, $this->doctor);
+
+        // 1. Entrada diagnóstica (se comparte con consentimiento)
+        app(ClinicalService::class)->addClinicalEntry(
+            $this->episode,
+            $this->doctor,
+            'diagnostico',
+            'Colecistitis litiásica aguda en resolución médica'
+        );
+
+        // 2. Procedimiento clínico (se comparte con consentimiento)
+        app(ClinicalService::class)->addClinicalEntry(
+            $this->episode,
+            $this->doctor,
+            'procedimiento',
+            'Canalización venosa periférica y toma de paraclínicos'
+        );
+
+        // 3. Entrada específica de información para el acompañante (se comparte con consentimiento)
+        app(ClinicalService::class)->addClinicalEntry(
+            $this->episode,
+            $this->doctor,
+            'informacion_acompanante',
+            'Paciente estable en observación a la espera de valoración por cirugía general.'
+        );
+
+        // 4. Nota de evolución interna privada (NUNCA se comparte, reserva legal)
+        app(ClinicalService::class)->addClinicalEntry(
+            $this->episode,
+            $this->doctor,
+            'nota',
+            'Paciente refiere antecedentes de abuso de sustancias y conflicto severo con su acompañante.'
+        );
+
+        // Acompañante se autentica
+        $this->post(route('companion.auth'), [
+            'public_code' => 'UBTTEST1',
+            'pin' => $pin,
+        ]);
+
+        // Sin consentimiento otorgado, nada de información clínica se expone
+        $resSinConsent = $this->withSession(['companion_episode_id' => $this->episode->id])->get(route('companion.status'));
+        $resSinConsent->assertStatus(200);
+        $resSinConsent->assertDontSee('Colecistitis litiásica aguda');
+        $resSinConsent->assertDontSee('Canalización venosa periférica');
+        $resSinConsent->assertDontSee('Paciente estable en observación');
+        $resSinConsent->assertDontSee('abuso de sustancias');
+
+        // Otorgar consentimiento
+        $this->actingAs($this->doctor)
+            ->withSession(['two_factor_authenticated' => true])
+            ->post(route('episodes.companion.consent', $this->episode), [
+                'enable' => '1',
+                'granted_by' => 'paciente',
+            ]);
+
+        // Con consentimiento: Diagnóstico, Procedimiento e Información al Acompañante son VISIBLES
+        $resConConsent = $this->withSession(['companion_episode_id' => $this->episode->id])->get(route('companion.status'));
+        $resConConsent->assertStatus(200);
+        $resConConsent->assertSee('Colecistitis litiásica aguda en resolución médica');
+        $resConConsent->assertSee('Canalización venosa periférica y toma de paraclínicos');
+        $resConConsent->assertSee('Paciente estable en observación a la espera de valoración por cirugía general.');
+        $resConConsent->assertSee('Información al Acompañante');
+
+        // SEGURIDAD CRÍTICA: La nota de evolución médica interna NUNCA debe aparecer
+        $resConConsent->assertDontSee('abuso de sustancias');
+        $resConConsent->assertDontSee('conflicto severo con su acompañante');
+
+        // Al revocar el consentimiento, se oculta inmediatamente todo
+        $this->actingAs($this->doctor)
+            ->withSession(['two_factor_authenticated' => true])
+            ->post(route('episodes.companion.consent', $this->episode), [
+                'enable' => '0',
+            ]);
+
+        $resRevocado = $this->withSession(['companion_episode_id' => $this->episode->id])->get(route('companion.status'));
+        $resRevocado->assertDontSee('Colecistitis litiásica aguda');
+        $resRevocado->assertDontSee('Paciente estable en observación');
+        $resRevocado->assertDontSee('abuso de sustancias');
+    }
 }

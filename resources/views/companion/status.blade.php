@@ -241,7 +241,7 @@
                 <div class="card-body p-4">
                     <div class="alert alert-light border small text-muted mb-3">
                         <i class="bi bi-info-circle text-primary me-1" aria-hidden="true"></i>
-                        Esta información se comparte de forma exclusiva con fines informativos para el acompañante autorizado, en virtud del consentimiento otorgado el <strong>{{ $activeConsent?->granted_at?->format('d/m/Y \a \l\a\s H:i') }}</strong>.
+                        Esta información (diagnósticos, procedimientos y notas específicas para acompañantes) se comparte exclusivamente con fines informativos en virtud del consentimiento otorgado el <strong>{{ $activeConsent?->granted_at?->format('d/m/Y \a \l\a\s H:i') }}</strong>. Por estricta reserva de la historia clínica (Resolución 1995 de 1999 y Ley 1581 de 2012), las notas internas de evolución médica no se difunden.
                     </div>
 
                     @if ($episode->clinicalEntries->count() > 0)
@@ -249,8 +249,16 @@
                             @foreach ($episode->clinicalEntries as $entry)
                                 <div class="list-group-item px-0 py-3">
                                     <div class="d-flex justify-content-between align-items-baseline mb-1">
-                                        <span class="badge @if ($entry->type === 'diagnostico') bg-primary @else bg-secondary @endif text-white">
-                                            {{ ucfirst($entry->type) }}
+                                        <span class="badge @if ($entry->type === 'diagnostico') bg-primary @elseif ($entry->type === 'procedimiento') bg-secondary @else bg-success @endif text-white">
+                                            @if ($entry->type === 'informacion_acompanante')
+                                                Información al Acompañante
+                                            @elseif ($entry->type === 'diagnostico')
+                                                Diagnóstico
+                                            @elseif ($entry->type === 'procedimiento')
+                                                Procedimiento
+                                            @else
+                                                {{ ucfirst($entry->type) }}
+                                            @endif
                                         </span>
                                         <span class="text-muted font-monospace tabular-nums small">
                                             {{ $entry->performed_at->format('d/m/Y H:i') }}

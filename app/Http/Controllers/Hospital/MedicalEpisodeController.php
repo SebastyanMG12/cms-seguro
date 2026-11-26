@@ -221,7 +221,7 @@ class MedicalEpisodeController extends Controller
         Gate::authorize('addClinicalEntry', $episode);
 
         $validated = $request->validate([
-            'type' => ['required', 'string', 'in:diagnostico,procedimiento,nota,aclaracion,anulacion'],
+            'type' => ['required', 'string', 'in:diagnostico,procedimiento,nota,informacion_acompanante,aclaracion,anulacion'],
             'content' => ['required', 'string', 'min:3', 'max:5000'],
             'references_entry_id' => ['nullable', 'integer', 'exists:clinical_entries,id'],
             'reason' => ['nullable', 'string', 'max:500'],

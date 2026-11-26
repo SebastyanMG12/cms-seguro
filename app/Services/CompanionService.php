@@ -172,7 +172,7 @@ class CompanionService
                 'consents',
                 'activeBedAssignment.bed.room.area',
                 'clinicalEntries' => function ($q) {
-                    $q->whereIn('type', ['diagnostico', 'procedimiento'])->orderBy('performed_at', 'asc');
+                    $q->whereIn('type', ['diagnostico', 'procedimiento', 'informacion_acompanante'])->orderBy('performed_at', 'asc');
                 },
             ])
             ->first();

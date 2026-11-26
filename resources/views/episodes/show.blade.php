@@ -948,8 +948,15 @@
                         <select class="form-select" name="type" required>
                             <option value="diagnostico">Diagnóstico</option>
                             <option value="procedimiento">Procedimiento</option>
-                            <option value="nota">Nota de Evolución</option>
+                            <option value="nota">Nota de Evolución (Reserva Interna)</option>
+                            <option value="informacion_acompanante">Información para el Acompañante</option>
                         </select>
+                        <div class="form-text small mt-1 text-muted">
+                            <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>
+                            <strong>Regla de Privacidad (Res. 1995/1999 y Ley 1581/2012):</strong>
+                            Los diagnósticos, procedimientos e información para el acompañante se comparten en el portal de seguimiento cuando existe consentimiento.
+                            Las notas de evolución médica son de uso asistencial interno y nunca se comparten al acompañante.
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Contenido Clínico <span class="text-danger">*</span></label>

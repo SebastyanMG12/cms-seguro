@@ -36,7 +36,7 @@ class ClinicalService
         return DB::transaction(function () use ($episode, $author, $type, $content, $referencesEntryId, $reason) {
             $locked = EmergencyEpisode::where('id', $episode->id)->lockForUpdate()->firstOrFail();
 
-            $validTypes = ['diagnostico', 'procedimiento', 'nota', 'aclaracion', 'anulacion'];
+            $validTypes = ['diagnostico', 'procedimiento', 'nota', 'informacion_acompanante', 'aclaracion', 'anulacion'];
             if (! in_array($type, $validTypes, true)) {
                 throw ValidationException::withMessages([
                     'type' => 'Tipo de entrada clínica no válido.',
